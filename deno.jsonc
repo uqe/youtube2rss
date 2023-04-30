@@ -1,0 +1,33 @@
+{
+  "tasks": {
+    "index": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/index.ts",
+    "server": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/server.ts",
+    "generatefeed": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/generate-feed.ts",
+    "serve": "/Users/arthurn/.deno/bin/file_server --port 8000 public/",
+    "telegram": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/telegram.ts"
+  },
+  "fmt": {
+    "files": {
+      "include": ["src/"],
+      "exclude": ["src/testdata/"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 120,
+      "indentWidth": 2,
+      "singleQuote": false,
+      "proseWrap": "preserve"
+    }
+  },
+  "lint": {
+    "files": {
+      "include": ["src/"],
+      "exclude": ["src/testdata/"]
+    },
+    "rules": {
+      "tags": ["recommended"],
+      "include": ["ban-untagged-todo"],
+      "exclude": ["no-unused-vars"]
+    }
+  }
+}
