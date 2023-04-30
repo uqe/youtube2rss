@@ -21,8 +21,16 @@ const getYoutubeVideoId = (message: string | undefined) => {
 
 bot.command("start", (ctx) => ctx.reply("Welcome! Up and running."));
 
+// Whitelist of users allowed to use the bot (Telegram user IDs), add your own here
+const whiteList = new Set([169125]);
+
 bot.on("message", async (ctx) => {
   const handler = (text: string) => ctx.reply(text);
+
+  if (!whiteList.has(ctx.message.from.id)) {
+    ctx.reply("You are not allowed to use this bot...");
+    return;
+  }
 
   const videoId = getYoutubeVideoId(ctx.message.text);
 
