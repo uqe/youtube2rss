@@ -1,9 +1,5 @@
-import { exists } from "https://deno.land/std/fs/mod.ts";
-import { Message } from "https://deno.land/x/grammy_types@v3.0.3/message.ts";
-import { VideoInfo } from "https://deno.land/x/ytdl_core@v0.1.2/src/types.ts";
-import ffmpegInstaller from "npm:@ffmpeg-installer/ffmpeg";
-import ffmpeg from "npm:fluent-ffmpeg";
 import { addVideoToDb } from "./db.ts";
+import { exists, ffmpeg, ffmpegInstaller, Message, VideoInfo } from "./deps.ts";
 import { generateFeed } from "./generate-feed.ts";
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);

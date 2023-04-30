@@ -1,5 +1,4 @@
-import { exists } from "https://deno.land/std/fs/mod.ts";
-import { DB } from "https://deno.land/x/sqlite/mod.ts";
+import { DB, exists } from "./deps.ts";
 
 const dbFile = "youtube2rss.db";
 

@@ -1,7 +1,6 @@
-import { Message } from "https://deno.land/x/grammy_types@v3.0.3/message.ts";
-import ytdl, { getInfo } from "https://deno.land/x/ytdl_core/mod.ts";
 import { convertVideo } from "./convert-video.ts";
 import { isVideoExists } from "./db.ts";
+import { getInfo, Message, ytdl } from "./deps.ts";
 
 const download = async (videoId: string, handler?: (text: string) => Promise<Message.TextMessage>) => {
   try {

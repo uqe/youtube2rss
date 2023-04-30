@@ -1,4 +1,4 @@
-import { config } from "https://deno.land/x/dotenv/mod.ts";
+import { config } from "./deps.ts";
 
 const showError = (msg: string) => {
   throw new Error(msg);

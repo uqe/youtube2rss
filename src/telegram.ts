@@ -1,6 +1,6 @@
-import { Bot } from "https://deno.land/x/grammy@v1.15.3/mod.ts";
 import { telegramBotToken } from "./config.ts";
 import { createDb } from "./db.ts";
+import { Bot } from "./deps.ts";
 import { download } from "./download.ts";
 
 const bot = new Bot(telegramBotToken);

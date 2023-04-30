@@ -1,7 +1,6 @@
-import fs from "node:fs";
-import { Podcast } from "npm:podcast";
-import { getAllVideos } from "./db.ts";
 import { serverUrl } from "./config.ts";
+import { getAllVideos } from "./db.ts";
+import { fs, Podcast } from "./deps.ts";
 
 const feedOptions = {
   title: "YouTube",
