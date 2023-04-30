@@ -18,6 +18,7 @@ To use the bot, you'll need to set up a Telegram bot and obtain an API token. Yo
 
    ```
    deno install --allow-net --allow-read --allow-write --unstable src/deps.ts
+   deno cache src/deps.ts --node-modules-dir
    ```
 
 3. Create a `.env` file with your Telegram bot API token:
@@ -27,7 +28,13 @@ To use the bot, you'll need to set up a Telegram bot and obtain an API token. Yo
    SERVER_URL=https://your-server-url
    ```
 
-4. Start the bot:
+4. Create SQLite database:
+
+   ```
+   deno task prepare
+   ```
+
+5. Start the bot:
 
    ```
    deno task telegram
