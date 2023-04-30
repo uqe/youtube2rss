@@ -21,20 +21,26 @@ To use the bot, you'll need to set up a Telegram bot and obtain an API token. Yo
    deno cache src/deps.ts --node-modules-dir
    ```
 
-3. Create a `.env` file with your Telegram bot API token:
+3. Install FFmpeg with the [ffmpeg-installer](https://www.npmjs.com/package/@ffmpeg-installer/ffmpeg) package with NPM:
+
+   ```
+   npm install --save @ffmpeg-installer/ffmpeg
+   ```
+
+4. Create a `.env` file with your Telegram bot API token:
 
    ```
    TELEGRAM_TOKEN=your-telegram-bot-token
    SERVER_URL=https://your-server-url
    ```
 
-4. Create SQLite database:
+5. Create SQLite database:
 
    ```
    deno task prepare
    ```
 
-5. Start the bot:
+6. Start the bot:
 
    ```
    deno task telegram
