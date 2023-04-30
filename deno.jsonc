@@ -5,6 +5,7 @@
     "serve": "/Users/arthurn/.deno/bin/file_server --port 8000 public/",
     "telegram": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/telegram.ts"
   },
+  "lock": "./deno.lock",
   "fmt": {
     "files": {
       "include": ["src/"],
