@@ -1,6 +1,5 @@
 {
   "tasks": {
-    "index": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/index.ts",
     "server": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/server.ts",
     "generatefeed": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/generate-feed.ts",
     "serve": "/Users/arthurn/.deno/bin/file_server --port 8000 public/",

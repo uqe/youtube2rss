@@ -17,13 +17,14 @@ To use the bot, you'll need to set up a Telegram bot and obtain an API token. Yo
 2. Install dependencies:
 
    ```
-   //
+   deno install --allow-net --allow-read --allow-write --unstable src/deps.ts
    ```
 
 3. Create a `.env` file with your Telegram bot API token:
 
    ```
    TELEGRAM_TOKEN=your-telegram-bot-token
+   SERVER_URL=https://your-server-url
    ```
 
 4. Start the bot:
