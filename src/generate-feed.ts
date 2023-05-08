@@ -1,6 +1,6 @@
 import { serverUrl } from "./config.ts";
 import { getAllVideos } from "./db.ts";
-import { fs, Podcast } from "./deps.ts";
+import { Podcast } from "./deps.ts";
 
 const feedOptions = {
   title: "YouTube",
@@ -72,8 +72,8 @@ const generateFeed = () => {
   });
 
   const xml = feed.buildXml();
-  const stream = fs.createWriteStream("./public/rss.xml");
-  stream.write(xml);
+
+  Deno.writeTextFileSync("./public/rss.xml", xml);
 };
 
 generateFeed();
