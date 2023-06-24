@@ -10,7 +10,7 @@ const updateDb = async (info: VideoInfo) => {
     info.videoDetails.title,
     info.videoDetails.description,
     info.videoDetails.video_url,
-    new Date().toISOString().split("T")[0],
+    new Date().toISOString(),
     `./public/files/${info.videoDetails.videoId}.mp3`,
     info.videoDetails.lengthSeconds,
   );
