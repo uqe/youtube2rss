@@ -1,8 +1,6 @@
 import { addVideoToDb } from "./db.ts";
-import { exists, ffmpeg, ffmpegInstaller, Message, VideoInfo } from "./deps.ts";
+import { exists, FfmpegClass, Message, VideoInfo } from "./deps.ts";
 import { generateFeed } from "./generate-feed.ts";
-
-ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 const updateDb = async (info: VideoInfo) => {
   await addVideoToDb(
@@ -16,24 +14,26 @@ const updateDb = async (info: VideoInfo) => {
   );
 };
 
-export const convertVideo = (info: VideoInfo, handler?: (text: string) => Promise<Message.TextMessage>) => {
+export const convertVideo = async (info: VideoInfo, handler?: (text: string) => Promise<Message.TextMessage>) => {
   const { videoId } = info.videoDetails;
 
-  ffmpeg(`./public/files/${videoId}.mp4`)
-    .audioBitrate(128)
-    .save(`./public/files/${videoId}.mp3`)
-    .on("start", () => console.log("Conversion started!"))
-    .on("end", async () => {
-      console.log("Conversion ended successfully");
-      updateDb(info);
+  const ffmpeg = new FfmpegClass({
+    input: `./public/files/${videoId}.mp4`,
+    // ffmpegDir: "/opt/homebrew/bin/ffmpeg"
+    ffmpegDir: "ffmpeg",
+  });
 
-      if (await exists(`./public/files/${videoId}.mp4`)) {
-        Deno.remove(`./public/files/${videoId}.mp4`);
-      }
+  console.log("Conversion started!");
+  await ffmpeg.audioBitrate(128).save(`./public/files/${videoId}.mp3`);
+  console.log("Conversion ended successfully");
+  await updateDb(info);
 
-      console.log("Start regenerating RSS feed");
-      generateFeed();
-      console.log("Feed regenerated successfully");
-      handler && handler("RSS feed was successfully updated.");
-    });
+  if (await exists(`./public/files/${videoId}.mp4`)) {
+    Deno.remove(`./public/files/${videoId}.mp4`);
+  }
+
+  console.log("Start regenerating RSS feed");
+  generateFeed();
+  console.log("Feed regenerated successfully");
+  handler && handler("RSS feed was successfully updated.");
 };
