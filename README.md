@@ -17,14 +17,13 @@ To use the bot, you'll need to set up a Telegram bot and obtain an API token. Yo
 2. Install dependencies:
 
    ```sh
-   deno install --allow-net --allow-read --allow-write --unstable src/deps.ts
-   deno cache src/deps.ts --node-modules-dir
+   deno cache src/deps.ts --lock=deno.lock --lock-write
    ```
 
-3. Install FFmpeg with the [ffmpeg-installer](https://www.npmjs.com/package/@ffmpeg-installer/ffmpeg) package with NPM:
+3. Make sure FFmpeg installed on your machine
 
    ```sh
-   npm install --save @ffmpeg-installer/ffmpeg
+   which ffmpeg
    ```
 
 4. Create a `.env` file with your Telegram bot API token:
