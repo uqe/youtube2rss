@@ -55,6 +55,20 @@ To use the bot, you'll need to set up a Telegram bot and obtain an API token. Yo
 
 4. Host the RSS feed on your server and subscribe to it in your favorite podcast app.
 
+## Deno file server usage
+
+1. Install dependencies:
+
+   ```sh
+   deno install --allow-net --allow-read https://deno.land/std@0.192.0/http/file_server.ts
+   ```
+
+2. Start the file server:
+
+   ```sh
+   deno task serve
+   ```
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

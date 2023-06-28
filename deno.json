@@ -1,7 +1,7 @@
 {
   "tasks": {
     "generatefeed": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/generate-feed.ts",
-    "serve": "/Users/arthurn/.deno/bin/file_server --port 8080 public/",
+    "serve": "file_server --port 8080 public/",
     "telegram": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/telegram.ts",
     "prepare": "deno run --allow-read --allow-write src/prepare.ts"
   },
