@@ -305,6 +305,7 @@
     "https://deno.land/x/ytdl_core@v0.1.2/src/utils.ts": "9f1334987679194479879c8e9be0c173b60cd4ec784707b086bb04d748d75b3c",
     "https://deno.land/x/ytdl_core@v0.1.2/src/video.ts": "8d55c1775caf5443b478e59b07a38f0418e17cc069ff42caf959c281462f4537",
     "https://esm.sh/m3u8stream@0.8.6": "1ac3a184647acf918ecea6f1dd53c2f01eaa1d91677437e5f4f48efa65951b2e",
+    "https://esm.sh/podcast@2.0.1": "0233a7715907ada2883bb3ecc128555566f8e84f5f401fe897f95d435ca84509",
     "https://esm.sh/querystring@0.2.1": "669971c12a2e266783bd8149e976b8fb2fd531b466c503ca4d6d18eb50f97162",
     "https://esm.sh/v115/@types/node@18.15.11/buffer.d.ts": "8d920819202c38d3994cb3b938079579898b81c9b084e7cbbd28850fa0e98acb",
     "https://esm.sh/v115/@types/node@18.15.11/crypto.d.ts": "0e125f836c8dfaee4b32af24a72e51a6ac3d0c68d8a21b1368974f53e63f37c1",
@@ -326,40 +327,35 @@
     "https://esm.sh/v115/querystring@0.2.1/encode.d.ts": "ecba2e44af95b0599c269a92628cec22e752868bce37396740deb51a5c547a26",
     "https://esm.sh/v115/querystring@0.2.1/index.d.ts": "0720c46eb7ce1553ce2d83afd036bea4990e971f36d2107dcd734f30bb9a0093",
     "https://esm.sh/v115/sax@1.2.4/deno/sax.mjs": "6bd9891a77b9d3fa0652d8a8eb1b17e02ace9799072c3d280f740be6e7f122e7",
+    "https://esm.sh/v126/mime-db@1.25.0/denonext/mime-db.mjs": "33cb3d438f3701fc12c542cab6c5daffcdf5c4bd08275733227bc8c05c5c73a2",
+    "https://esm.sh/v126/mime-types@2.1.13/denonext/mime-types.mjs": "e1fa27981f3ff207a0693886195d70a9071f3aee0b438b499706722e650978a4",
+    "https://esm.sh/v126/podcast@2.0.1/denonext/podcast.mjs": "d8698d2925ef4954f08d83ec7d8bfd04e000c932002d8f97bd31558edfb06a73",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/index.d.ts": "eec35b74289f411cd0d9c661264e9a9fc2fb60408224fa54bbbeb861f66c4acf",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/deprecate.d.ts": "22ce5fc09c8588e4f46a62c86bdfb7d5f4673b52862c2ed22f22f34f02c07c08",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed-custom-element.d.ts": "972125350378fde509805b264c4cea38bdb437520b890d97072dca9f25f753cf",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed-itunes-category-elements.d.ts": "86e7c127207a6d863bd4c397c3c35ed10181a926efff1638cce3774682fe103e",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed-itunes-category.d.ts": "8e150de1b52b1832084a1614117abcb82bad4c8f67412abb0ba74dce6f0dd292",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed-itunes-owner.d.ts": "38d97702d9db43a1e71eb4377250f6519ac35ec19492a44c2f3eb5ad241d1767",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed-itunes-type.d.ts": "21aa7afb97fd78627d1dcf450a6ae1ff9adda115daa92e066d8b89e0efbe4ce5",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed-itunes.d.ts": "4f1942254c3fb35d611edd1168ffacf85df4cd824696db40ae3941496892d2bd",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed-namespace-options.d.ts": "ba5809f672cbd5a445437203435e726dec866e002f80839c9a9b96162d86514d",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed-namespace.d.ts": "4a78620f50cf636a1151cbc8bd5b44363960acd6f6deb9d42f0d0f1c3db03ee8",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed-options.d.ts": "c6cdeb17ed7cc87fd08fefeb92d60f6b621b28906b57d68cbc209f056109d76c",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/feed.d.ts": "58889b3db6338215a9fb07fb4cbdfaab7bafd0d4fe522154cf74da8784a02dbe",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/index.d.ts": "9960741663b24d81c6834d737caba2475b650268906d3ed2f8fe289505290040",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/item-enclosure.d.ts": "482ba63fd524ed2349156af6da9b1b90e7ff726be0886434893df2aaaba38f2c",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/item-itunes.d.ts": "c832d9955357adf256c273dc7752a1333806272c2bd9d1ed2775009863f0270a",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/item-options.d.ts": "44c9dc430f91fafab8cb3bbf552221855f2faf234afeea5311d168dbf8893e11",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/item-simple-chapters-chapter-element.d.ts": "bc6ffc95d6bf7c867d7ff13a686ba1acb673d501616903c22d89be3b0aa91974",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/item-simple-chapters-chapter.d.ts": "8a6d05e6e069c6913d1f3355d028267853b3b91c189c7cb1afe2fbe673965803",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/item-simple-chapters-chapters-element.d.ts": "86e44b2bb31aeb1b600415b5dcb7186b8dcc229d61c7469ee033a08167c4b493",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/item-simple-chapters-chapters.d.ts": "e63b5d9eb9bc7ce9cba906a91426cbc46ce26e9e91c7a25f0cb44c11fa2cdbb7",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/item-simple-chapters.d.ts": "893cb437a77d978715b68d7e84a0fe4e0cfb72436c7e793fb32237f026f71e46",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/item.d.ts": "813e7a58eacc9d22153cf6b821617653761cf8a1ccb1d87a659987cac9c747b3",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/itunes-explicit.d.ts": "5c1ea244624d651a5fbe7be050ddecf18624d18e7cbcea589197d627837c77ca",
+    "https://esm.sh/v126/podcast@2.0.1/dist/types/types/warned-positions.d.ts": "d39fa9bc7271d091f29caec7ce7195a5e796272f57d4fd3e38b16e88a2944f19",
+    "https://esm.sh/v126/rss@1.2.2/denonext/rss.mjs": "8eb62546368bdedef48c349a218256f6d98e0a47798f1be248b2b7420486aa84",
+    "https://esm.sh/v126/xml@1.0.1/denonext/xml.mjs": "cdc967ecdddd9450da4294fbca3a792d1ee56a96cb3b0e6d662373784950a320",
     "https://raw.githubusercontent.com/fent/node-m3u8stream/master/src/parse-time.ts": "7cf1d14095380fa9e75f7c4c4420dcd9f21ea5279a6731e94b81a543342f3ac9"
-  },
-  "npm": {
-    "specifiers": {
-      "podcast": "podcast@2.0.1"
-    },
-    "packages": {
-      "mime-db@1.25.0": {
-        "integrity": "sha512-5k547tI4Cy+Lddr/hdjNbBEWBwSl8EBc5aSdKvedav8DReADgWJzcYiktaRIw3GtGC1jjwldXtTzvqJZmtvC7w==",
-        "dependencies": {}
-      },
-      "mime-types@2.1.13": {
-        "integrity": "sha512-ryBDp1Z/6X90UvjUK3RksH0IBPM137T7cmg4OgD5wQBojlAiUwuok0QeELkim/72EtcYuNlmbkrcGuxj3Kl0YQ==",
-        "dependencies": {
-          "mime-db": "mime-db@1.25.0"
-        }
-      },
-      "podcast@2.0.1": {
-        "integrity": "sha512-TWXe/zVziwJNksAn7RLkSre+Z6VQgbs/+gC7qQCKdkyw0hv2hdFGOY9rHgKqa4LI+UP+yZBa6Wr+b9a9vrYDYQ==",
-        "dependencies": {
-          "rss": "rss@1.2.2"
-        }
-      },
-      "rss@1.2.2": {
-        "integrity": "sha512-xUhRTgslHeCBeHAqaWSbOYTydN2f0tAzNXvzh3stjz7QDhQMzdgHf3pfgNIngeytQflrFPfy6axHilTETr6gDg==",
-        "dependencies": {
-          "mime-types": "mime-types@2.1.13",
-          "xml": "xml@1.0.1"
-        }
-      },
-      "xml@1.0.1": {
-        "integrity": "sha512-huCv9IH9Tcf95zuYCsQraZtWnJvBtLVE0QHMOs8bWyZAFZNDcYjsPq1nEx8jKA9y+Beo9v+7OBPRisQTjinQMw==",
-        "dependencies": {}
-      }
-    }
   }
 }
