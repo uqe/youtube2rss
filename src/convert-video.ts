@@ -19,7 +19,6 @@ export const convertVideo = async (info: VideoInfo, handler?: (text: string) => 
 
   const ffmpeg = new FfmpegClass({
     input: `./public/files/${videoId}.mp4`,
-    // ffmpegDir: "/opt/homebrew/bin/ffmpeg"
     ffmpegDir: "ffmpeg",
   });
 
