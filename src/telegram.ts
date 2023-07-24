@@ -4,7 +4,7 @@ import { download } from "./download.ts";
 
 const bot = new Bot(telegramBotToken);
 
-const getYoutubeVideoId = (message: string) => {
+export const getYoutubeVideoId = (message: string) => {
   const regex =
     /^https?:\/\/(?:(?:youtu\.be\/)|(?:(?:www\.)?youtube\.com\/(?:(?:watch\?(?:[^&]+&)?vi?=)|(?:vi?\/)|(?:shorts\/))))([a-zA-Z0-9_-]{11,})/gim;
 
