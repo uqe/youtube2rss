@@ -1,5 +1,4 @@
 import { serverUrl } from "./config.ts";
-import { getAllVideos } from "./db.ts";
 import { Podcast } from "./deps.ts";
 
 const rssFile = Deno.env.get("IS_TEST") ? "./public/rss.test.xml" : "./public/rss.xml";

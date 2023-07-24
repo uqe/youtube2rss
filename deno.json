@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "generatefeed": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/generate-feed.ts",
+    "buildrss": "deno run --allow-write --allow-read --allow-run --allow-env src/build-rss.ts",
     "serve": "file_server --port 8080 public/",
     "telegram": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/telegram.ts",
     "prepare": "deno run --allow-read --allow-write src/prepare.ts",
