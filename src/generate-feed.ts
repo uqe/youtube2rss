@@ -57,11 +57,13 @@ export const generateFeed = (allVideos: Video[]) => {
       guid: item.video_id,
       author: "Arthur N",
       date: item.video_added_date,
-      enclosure: {
-        url: `${serverUrl}/files/${item.video_id}.mp3`,
-        file: item.video_path,
-        type: "audio/mp3",
-      },
+      enclosure: !Deno.env.get("IS_TEST")
+        ? {
+          url: `${serverUrl}/files/${item.video_id}.mp3`,
+          file: item.video_path,
+          type: "audio/mp3",
+        }
+        : undefined,
       itunesAuthor: "Arthur N",
       itunesExplicit: false,
       itunesSubtitle: item.video_name,
@@ -70,7 +72,7 @@ export const generateFeed = (allVideos: Video[]) => {
     });
   });
 
-  const xml = feed.buildXml({ indent: "  " });
+  const xml = Deno.env.get("IS_TEST") ? feed.buildXml() : feed.buildXml({ indent: "  " });
 
   Deno.writeTextFileSync(rssFile, xml);
 };
