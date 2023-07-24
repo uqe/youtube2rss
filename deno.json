@@ -8,31 +8,19 @@
   },
   "lock": "./deno.lock",
   "fmt": {
-    "files": {
-      "include": [
-        "src/"
-      ],
-      "exclude": [
-        "src/testdata/"
-      ]
-    },
-    "options": {
-      "useTabs": false,
-      "lineWidth": 120,
-      "indentWidth": 2,
-      "singleQuote": false,
-      "proseWrap": "preserve"
-    }
+    "include": [
+      "src/"
+    ],
+    "useTabs": false,
+    "lineWidth": 120,
+    "indentWidth": 2,
+    "singleQuote": false,
+    "proseWrap": "preserve"
   },
   "lint": {
-    "files": {
-      "include": [
-        "src/"
-      ],
-      "exclude": [
-        "src/testdata/"
-      ]
-    },
+    "include": [
+      "src/"
+    ],
     "rules": {
       "tags": [
         "recommended"
