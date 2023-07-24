@@ -1,4 +1,4 @@
-import { addVideoToDb } from "./db.ts";
+import { addVideoToDb, getAllVideos } from "./db.ts";
 import { exists, FfmpegClass, Message, VideoInfo } from "./deps.ts";
 import { generateFeed } from "./generate-feed.ts";
 
@@ -22,7 +22,7 @@ export const convertVideo = async (info: VideoInfo, handler?: (text: string) => 
     ffmpegDir: "ffmpeg",
   });
 
-  console.log("Conversion started!");
+  console.log("Conversion started");
   await ffmpeg.audioBitrate(128).save(`./public/files/${videoId}.mp3`);
   console.log("Conversion ended successfully");
   await updateDb(info);
@@ -32,7 +32,7 @@ export const convertVideo = async (info: VideoInfo, handler?: (text: string) => 
   }
 
   console.log("Start regenerating RSS feed");
-  generateFeed();
+  generateFeed(getAllVideos());
   console.log("Feed regenerated successfully");
   handler && handler("RSS feed was successfully updated.");
 };

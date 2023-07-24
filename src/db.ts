@@ -2,7 +2,7 @@ import { DB, exists } from "./deps.ts";
 
 const dbFile = Deno.env.get("IS_TEST") ? "youtube2rss.test.db" : "youtube2rss.db";
 
-const createDb = async () => {
+export const createDb = async () => {
   if (await exists(dbFile)) {
     console.log("Database already exists");
     return;
@@ -26,7 +26,7 @@ const createDb = async () => {
   console.log("Database created!");
 };
 
-const addVideoToDb = async (
+export const addVideoToDb = async (
   videoId: string,
   videoName: string,
   videoDescription: string | null,
@@ -45,7 +45,7 @@ const addVideoToDb = async (
   db.close();
 };
 
-const getAllVideos = () => {
+export const getAllVideos = () => {
   const db = new DB(dbFile, { mode: "read" });
 
   const videos = db.queryEntries<{
@@ -61,11 +61,9 @@ const getAllVideos = () => {
   return videos;
 };
 
-const isVideoExists = (videoId: string) => {
+export const isVideoExists = (videoId: string) => {
   const db = new DB(dbFile, { mode: "read" });
   const video = db.query<[[number]]>("SELECT EXISTS (SELECT * FROM videos WHERE video_id = :videoId)", { videoId });
   db.close();
   return Boolean(video[0][0]);
 };
-
-export { addVideoToDb, createDb, getAllVideos, isVideoExists };

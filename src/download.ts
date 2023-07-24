@@ -12,6 +12,8 @@ const download = async (videoId: string, handler?: (text: string) => Promise<Mes
       return;
     }
 
+    console.log("Start downloading");
+
     const stream = await ytdl(videoId, { filter: "audioonly" });
 
     const chunks: Uint8Array[] = [];
@@ -24,7 +26,9 @@ const download = async (videoId: string, handler?: (text: string) => Promise<Mes
 
     await Deno.writeFile(`./public/files/${info.videoDetails.videoId}.mp4`, new Uint8Array(await blob.arrayBuffer()));
 
-    convertVideo(info, handler);
+    console.log("Downloaded successfully");
+
+    await convertVideo(info, handler);
   } catch (error) {
     handler && handler("Something went wrong. Please try again later...");
     console.error(error);

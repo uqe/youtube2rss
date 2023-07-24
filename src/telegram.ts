@@ -31,9 +31,7 @@ bot.on("message", async (ctx) => {
 
     if (videoId) {
       ctx.reply("Got it! I'll start downloading the video. Please wait...");
-      console.log("Start downloading");
       await download(videoId, handler);
-      console.log("Downloaded");
     } else {
       ctx.reply("Please send me a valid YouTube video link.");
     }

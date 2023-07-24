@@ -2,6 +2,8 @@ import { serverUrl } from "./config.ts";
 import { getAllVideos } from "./db.ts";
 import { Podcast } from "./deps.ts";
 
+const rssFile = Deno.env.get("IS_TEST") ? "./public/rss.test.xml" : "./public/rss.xml";
+
 const feedOptions = {
   title: "YouTube",
   description: "YouTube personal feed",
@@ -36,7 +38,6 @@ const feedOptions = {
 };
 
 export interface Video {
-  id: number;
   video_id: string;
   video_name: string;
   video_description: string | null;
@@ -46,8 +47,7 @@ export interface Video {
   video_length: string;
 }
 
-const generateFeed = () => {
-  const allVideos = getAllVideos();
+export const generateFeed = (allVideos: Video[]) => {
   const feed = new Podcast(feedOptions);
 
   allVideos.forEach((item) => {
@@ -71,11 +71,7 @@ const generateFeed = () => {
     });
   });
 
-  const xml = feed.buildXml();
+  const xml = feed.buildXml({ indent: "  " });
 
-  Deno.writeTextFileSync("./public/rss.xml", xml);
+  Deno.writeTextFileSync(rssFile, xml);
 };
-
-generateFeed();
-
-export { generateFeed };
