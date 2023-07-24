@@ -11,4 +11,7 @@ export { Bot } from "https://deno.land/x/grammy@v1.15.3/mod.ts";
 export { DB } from "https://deno.land/x/sqlite@v3.7.2/mod.ts";
 export { getInfo } from "https://deno.land/x/ytdl_core@v0.1.2/mod.ts";
 
+export { assertEquals, assertObjectMatch } from "https://deno.land/std@0.195.0/assert/mod.ts";
+export { afterAll, afterEach, beforeAll, describe, it } from "https://deno.land/std@0.195.0/testing/bdd.ts";
+
 export { FfmpegClass, Podcast, ytdl };

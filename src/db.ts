@@ -1,6 +1,6 @@
 import { DB, exists } from "./deps.ts";
 
-const dbFile = "youtube2rss.db";
+const dbFile = Deno.env.get("IS_TEST") ? "youtube2rss.test.db" : "youtube2rss.db";
 
 const createDb = async () => {
   if (await exists(dbFile)) {
@@ -49,7 +49,6 @@ const getAllVideos = () => {
   const db = new DB(dbFile, { mode: "read" });
 
   const videos = db.queryEntries<{
-    id: number;
     video_id: string;
     video_name: string;
     video_description: string | null;
