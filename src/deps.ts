@@ -1,4 +1,5 @@
 import { FfmpegClass } from "https://deno.land/x/deno_ffmpeg@v3.1.0/mod.ts";
+import { S3Client } from "https://deno.land/x/s3_lite_client@0.6.1/mod.ts";
 import { parse } from "https://deno.land/x/xml@2.1.1/mod.ts";
 import ytdl from "https://deno.land/x/ytdl_core@v0.1.2/mod.ts";
 import { Podcast } from "https://esm.sh/podcast@2.0.1";
@@ -15,4 +16,4 @@ export { getInfo } from "https://deno.land/x/ytdl_core@v0.1.2/mod.ts";
 export { assertEquals, assertObjectMatch } from "https://deno.land/std@0.195.0/assert/mod.ts";
 export { afterAll, afterEach, beforeAll, describe, it } from "https://deno.land/std@0.195.0/testing/bdd.ts";
 
-export { FfmpegClass, parse, Podcast, ytdl };
+export { FfmpegClass, parse, Podcast, S3Client, ytdl };

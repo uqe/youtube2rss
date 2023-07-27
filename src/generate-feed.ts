@@ -1,5 +1,6 @@
 import { serverUrl } from "./config.ts";
 import { Podcast } from "./deps.ts";
+import { uploadXmlToS3 } from "./s3.ts";
 
 const rssFile = Deno.env.get("IS_TEST") ? "./public/rss.test.xml" : "./public/rss.xml";
 
@@ -75,4 +76,6 @@ export const generateFeed = (allVideos: Video[]) => {
   const xml = Deno.env.get("IS_TEST") ? feed.buildXml() : feed.buildXml({ indent: "  " });
 
   Deno.writeTextFileSync(rssFile, xml);
+
+  uploadXmlToS3(rssFile);
 };
