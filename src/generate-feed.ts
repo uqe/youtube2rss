@@ -9,7 +9,7 @@ const feedOptions = {
   description: "YouTube personal feed",
   feedUrl: `${serverUrl}/rss.xml`,
   siteUrl: "https://github.com/uqe/youtube2rss",
-  imageUrl: `${serverUrl}/cover.png`,
+  imageUrl: `${serverUrl}/cover.jpg`,
   author: "Arthur N",
   managingEditor: "arthurn@duck.com",
   generator: "https://github.com/uqe/youtube2rss",
@@ -34,7 +34,7 @@ const feedOptions = {
       ],
     },
   ],
-  itunesImage: `${serverUrl}/cover.png`,
+  itunesImage: `${serverUrl}/cover.jpg`,
 };
 
 export interface Video {
