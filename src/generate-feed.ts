@@ -11,9 +11,9 @@ const feedOptions = {
   siteUrl: "https://github.com/uqe/youtube2rss",
   imageUrl: `${serverUrl}/cover.png`,
   author: "Arthur N",
-  managingEditor: "Arthur N",
+  managingEditor: "arthurn@duck.com",
   generator: "https://github.com/uqe/youtube2rss",
-  webMaster: "Arthur N",
+  webMaster: "arthurn@duck.com",
   copyright: "2023 Arthur N",
   language: "ru",
   categories: ["Education", "Self-Improvement"],
@@ -60,10 +60,10 @@ export const generateFeed = (allVideos: Video[]) => {
       date: item.video_added_date,
       enclosure: !Deno.env.get("IS_TEST")
         ? {
-          url: `${serverUrl}/files/${item.video_id}.mp3`,
-          file: item.video_path,
-          type: "audio/mp3",
-        }
+            url: `${serverUrl}/files/${item.video_id}.mp3`,
+            file: item.video_path,
+            type: "audio/mp3",
+          }
         : undefined,
       itunesAuthor: "Arthur N",
       itunesExplicit: false,
