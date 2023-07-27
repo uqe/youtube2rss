@@ -60,10 +60,10 @@ export const generateFeed = (allVideos: Video[]) => {
       date: item.video_added_date,
       enclosure: !Deno.env.get("IS_TEST")
         ? {
-            url: `${serverUrl}/files/${item.video_id}.mp3`,
-            file: item.video_path,
-            type: "audio/mp3",
-          }
+          url: `${serverUrl}/files/${item.video_id}.mp3`,
+          file: item.video_path,
+          type: "audio/mp3",
+        }
         : undefined,
       itunesAuthor: "Arthur N",
       itunesExplicit: false,
