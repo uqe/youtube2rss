@@ -1,5 +1,5 @@
 import { serverUrl } from "../config.ts";
-import { afterAll, assertEquals, beforeAll, describe, it, parse } from "../deps.ts";
+import { afterAll, assertEquals, describe, it, parse } from "../deps.ts";
 import { generateFeed, Video } from "../generate-feed.ts";
 
 const rssFile = "./public/rss.test.xml";
