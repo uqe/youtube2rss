@@ -1,6 +1,8 @@
-import { serverUrl } from "./config.ts";
 import { Podcast } from "./deps.ts";
+import { isS3Configured } from "./helpers.ts";
 import { uploadXmlToS3 } from "./s3.ts";
+
+const serverUrl = Deno.env.get("IS_TEST") ? "https://test.com" : Deno.env.get("SERVER_URL");
 
 const rssFile = Deno.env.get("IS_TEST") ? "./public/rss.test.xml" : "./public/rss.xml";
 
@@ -47,7 +49,7 @@ export interface Video {
   video_length: string;
 }
 
-export const generateFeed = (allVideos: Video[]) => {
+export const generateFeed = async (allVideos: Video[]) => {
   const feed = new Podcast(feedOptions);
 
   allVideos.forEach((item) => {
@@ -77,5 +79,7 @@ export const generateFeed = (allVideos: Video[]) => {
 
   Deno.writeTextFileSync(rssFile, xml);
 
-  uploadXmlToS3(rssFile);
+  if (isS3Configured()) {
+    await uploadXmlToS3(rssFile);
+  }
 };

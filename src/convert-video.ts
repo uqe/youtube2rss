@@ -1,7 +1,8 @@
 import { addVideoToDb, getAllVideos } from "./db.ts";
 import { exists, FfmpegClass, Message, VideoInfo } from "./deps.ts";
 import { generateFeed } from "./generate-feed.ts";
-import { putFileOnS3 } from "./s3.ts";
+import { isS3Configured } from "./helpers.ts";
+import { uploadFileOnS3 } from "./s3.ts";
 
 const updateDb = async (info: VideoInfo) => {
   await addVideoToDb(
@@ -32,7 +33,9 @@ export const convertVideo = async (info: VideoInfo, handler?: (text: string) => 
     Deno.remove(`./public/files/${videoId}.mp4`);
   }
 
-  await putFileOnS3(videoId, `./public/files/${videoId}.mp3`);
+  if (isS3Configured()) {
+    await uploadFileOnS3(videoId, `./public/files/${videoId}.mp3`);
+  }
 
   console.log("Start regenerating RSS feed");
   generateFeed(getAllVideos());

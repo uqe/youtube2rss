@@ -11,23 +11,29 @@ const s3client = new S3Client({
   secretKey: Deno.env.get("S3_SECRET_KEY"),
 });
 
-export const putFileOnS3 = async (videoId: string, filePath: string) => {
-  const file = await Deno.open(filePath, { read: true });
+export const uploadFileOnS3 = async (videoId: string, filePath: string) => {
+  try {
+    const file = await Deno.open(filePath, { read: true });
+    const readableStream = file.readable;
 
-  const readableStream = file.readable;
-
-  await s3client.putObject(`files/${videoId}.mp3`, readableStream);
+    await s3client.putObject(`files/${videoId}.mp3`, readableStream);
+  } catch (error) {
+    console.error(`Error putting file on S3: ${error}`);
+  }
 };
 
 export const uploadXmlToS3 = async (filePath: string) => {
-  const file = await Deno.open(filePath, { read: true });
+  try {
+    const file = await Deno.open(filePath, { read: true });
+    const readableStream = file.readable;
 
-  const readableStream = file.readable;
-
-  await s3client.putObject(`rss.xml`, readableStream, {
-    metadata: {
-      "Content-Type": "text/xml",
-      "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
-    },
-  });
+    await s3client.putObject(`rss.xml`, readableStream, {
+      metadata: {
+        "Content-Type": "text/xml",
+        "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+      },
+    });
+  } catch (error) {
+    console.error(`Error uploading XML to S3: ${error}`);
+  }
 };
