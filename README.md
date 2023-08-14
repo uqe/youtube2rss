@@ -35,7 +35,9 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. You'l
 5. Start a Teleram bot with this ENV variables: `TELEGRAM_BOT_TOKEN` and `SERVER_URL`, for example:
 
    ```sh
-   TELEGRAM_BOT_TOKEN=myTeLeGrAmBoTtOkEn SERVER_URL=https://my-s3-bucket-public-url.com deno task telegram
+   TELEGRAM_BOT_TOKEN=myTeLeGrAmBoTtOkEn
+   SERVER_URL=https://my-s3-bucket-public-url.com
+   deno task telegram
    ```
 
 ## How to use
@@ -67,7 +69,13 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. You'l
 1. Start a Teleram bot with this ENV variables: `TELEGRAM_BOT_TOKEN`, `SERVER_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_ENDPOINT` and `S3_SECRET_KEY`, for example:
 
 ```sh
-TELEGRAM_BOT_TOKEN=myTeLeGrAmBoTtOkEn SERVER_URL=https://my-s3-bucket-public-url.com S3_BUCKET=youtube2rss S3_ACCESS_KEY=s3AcCeSsKeY S3_ENDPOINT=bucket.s3.com S3_SECRET_KEY=s3SeCrEtKeY deno task telegram
+TELEGRAM_BOT_TOKEN=myTeLeGrAmBoTtOkEn
+SERVER_URL=https://my-s3-bucket-public-url.com
+S3_BUCKET=youtube2rss
+S3_ACCESS_KEY=s3AcCeSsKeY
+S3_ENDPOINT=bucket.s3.com
+S3_SECRET_KEY=s3SeCrEtKeY
+deno task telegram
 ```
 
 If all variables are set, the bot will store `.mp3` files and generated `rss.xml` file in your S3 bucket. I'm using [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/) as S3 compatible storage. The [free plan](https://developers.cloudflare.com/r2/pricing/) is sufficient for my needs. Don't forget to manually upload `cover.jpg` to your bucket.
