@@ -1,7 +1,7 @@
 import { S3Client } from "./deps.ts";
 
 const s3client = new S3Client({
-  endPoint: Deno.env.get("S3_ENDPOINT") || "temporary-endpoint",
+  endPoint: Deno.env.get("S3_ENDPOINT") as string,
   port: 443,
   useSSL: true,
   region: "auto",

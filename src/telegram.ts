@@ -3,10 +3,8 @@ import { download } from "./download.ts";
 import { getYoutubeVideoId } from "./helpers.ts";
 
 if (!Deno.env.get("TELEGRAM_BOT_TOKEN") || !Deno.env.get("SERVER_URL")) {
-  if (!Deno.env.get("IS_TEST")) {
-    console.error("TELEGRAM_BOT_TOKEN or SERVER_URL variables are missing.");
-    Deno.exit(1);
-  }
+  console.error("TELEGRAM_BOT_TOKEN or SERVER_URL variables are missing.");
+  Deno.exit(1);
 }
 
 const bot = new Bot(Deno.env.get("TELEGRAM_BOT_TOKEN") as string);
