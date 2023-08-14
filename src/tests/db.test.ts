@@ -1,5 +1,5 @@
-import { afterAll, afterEach, assertEquals, assertObjectMatch, beforeAll, DB, describe, it } from "../deps.ts";
 import { addVideoToDb, createDb, getAllVideos, isVideoExists } from "../db.ts";
+import { afterAll, afterEach, assertEquals, assertObjectMatch, beforeAll, DB, describe, it } from "../deps.ts";
 
 const dbFile = "youtube2rss.test.db";
 

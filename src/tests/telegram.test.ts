@@ -1,5 +1,5 @@
 import { assertEquals, describe, it } from "../deps.ts";
-import { getYoutubeVideoId } from "../telegram.ts";
+import { getYoutubeVideoId } from "../helpers.ts";
 
 describe("telegram tests", () => {
   describe("telegram", () => {

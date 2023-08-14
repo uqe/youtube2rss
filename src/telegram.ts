@@ -1,17 +1,13 @@
-import { telegramBotToken } from "./config.ts";
 import { Bot } from "./deps.ts";
 import { download } from "./download.ts";
+import { getYoutubeVideoId } from "./helpers.ts";
 
-const bot = new Bot(telegramBotToken);
+if (!Deno.env.get("TELEGRAM_BOT_TOKEN") || !Deno.env.get("SERVER_URL")) {
+  console.error("TELEGRAM_BOT_TOKEN or SERVER_URL variables are missing.");
+  Deno.exit(1);
+}
 
-export const getYoutubeVideoId = (message: string) => {
-  const regex =
-    /^https?:\/\/(?:(?:youtu\.be\/)|(?:(?:www\.)?youtube\.com\/(?:(?:watch\?(?:[^&]+&)?vi?=)|(?:vi?\/)|(?:shorts\/))))([a-zA-Z0-9_-]{11,})/gim;
-
-  const res = regex.exec(message);
-
-  return res && res[1];
-};
+const bot = new Bot(Deno.env.get("TELEGRAM_BOT_TOKEN") as string);
 
 bot.command("start", (ctx) => ctx.reply("Welcome! Up and running."));
 

@@ -1,5 +1,8 @@
-import { serverUrl } from "./config.ts";
 import { Podcast } from "./deps.ts";
+import { isS3Configured } from "./helpers.ts";
+import { uploadXmlToS3 } from "./s3.ts";
+
+const serverUrl = Deno.env.get("IS_TEST") ? "https://test.com" : Deno.env.get("SERVER_URL");
 
 const rssFile = Deno.env.get("IS_TEST") ? "./public/rss.test.xml" : "./public/rss.xml";
 
@@ -8,11 +11,11 @@ const feedOptions = {
   description: "YouTube personal feed",
   feedUrl: `${serverUrl}/rss.xml`,
   siteUrl: "https://github.com/uqe/youtube2rss",
-  imageUrl: `${serverUrl}/cover.png`,
+  imageUrl: `${serverUrl}/cover.jpg`,
   author: "Arthur N",
-  managingEditor: "Arthur N",
+  managingEditor: "arthurn@duck.com",
   generator: "https://github.com/uqe/youtube2rss",
-  webMaster: "Arthur N",
+  webMaster: "arthurn@duck.com",
   copyright: "2023 Arthur N",
   language: "ru",
   categories: ["Education", "Self-Improvement"],
@@ -33,7 +36,7 @@ const feedOptions = {
       ],
     },
   ],
-  itunesImage: `${serverUrl}/cover.png`,
+  itunesImage: `${serverUrl}/cover.jpg`,
 };
 
 export interface Video {
@@ -46,7 +49,7 @@ export interface Video {
   video_length: string;
 }
 
-export const generateFeed = (allVideos: Video[]) => {
+export const generateFeed = async (allVideos: Video[]) => {
   const feed = new Podcast(feedOptions);
 
   allVideos.forEach((item) => {
@@ -75,4 +78,8 @@ export const generateFeed = (allVideos: Video[]) => {
   const xml = Deno.env.get("IS_TEST") ? feed.buildXml() : feed.buildXml({ indent: "  " });
 
   Deno.writeTextFileSync(rssFile, xml);
+
+  if (isS3Configured()) {
+    await uploadXmlToS3(rssFile);
+  }
 };
