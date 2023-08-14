@@ -1,6 +1,7 @@
-import { serverUrl } from "../config.ts";
 import { afterAll, assertEquals, describe, it, parse } from "../deps.ts";
 import { generateFeed, Video } from "../generate-feed.ts";
+
+const serverUrl = "https://test.com";
 
 const rssFile = "./public/rss.test.xml";
 
@@ -19,13 +20,14 @@ const mockVideos: Video[] = [
     video_length: "00:21:34",
   },
   {
-    video_id: "def456",
-    video_name: "Test Video 2",
-    video_description: "This is a test video",
-    video_url: "https://example.com/videos/def456.mp3",
+    video_id: "_9db9D4um0Y",
+    video_name: "What’s New in Arc: Space Creation, Windows Update, Haptic Tabs and more",
+    video_description:
+      `This week's Arc update is a big one, so we're trying something different - catch up with Josh, Dara and Alexandra as they share What's New in Arc.`,
+    video_url: "https://www.youtube.com/watch?v=_9db9D4um0Y",
     video_added_date: "2022-01-02",
-    video_path: "/path/to/def456.mp3",
-    video_length: "00:05:16",
+    video_path: "/public/files/_9db9D4um0Y.mp3",
+    video_length: "00:04:45",
   },
 ];
 
