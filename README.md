@@ -23,7 +23,7 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. You'l
 3. Make sure ffmpeg installed on your machine:
 
    ```sh
-   ffmpeg --version
+   ffmpeg -version
    ```
 
 4. Create SQLite database:
