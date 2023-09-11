@@ -2,16 +2,18 @@ import { Podcast } from "./deps.ts";
 import { isS3Configured } from "./helpers.ts";
 import { uploadXmlToS3 } from "./s3.ts";
 
-const serverUrl = Deno.env.get("IS_TEST") ? "https://test.com" : Deno.env.get("SERVER_URL");
+const serverUrl = () => (Deno.env.get("IS_TEST") ? "https://test.com" : Deno.env.get("SERVER_URL"));
 
-const rssFile = Deno.env.get("IS_TEST") ? "./public/rss.test.xml" : "./public/rss.xml";
+const rssFile = () => (Deno.env.get("IS_TEST") ? "./public/rss.test.xml" : "./public/rss.xml");
+
+const xml = (feed: Podcast) => (Deno.env.get("IS_TEST") ? feed.buildXml() : feed.buildXml({ indent: "  " }));
 
 const feedOptions = {
   title: "YouTube",
   description: "YouTube personal feed",
-  feedUrl: `${serverUrl}/rss.xml`,
+  feedUrl: `${serverUrl()}/rss.xml`,
   siteUrl: "https://github.com/uqe/youtube2rss",
-  imageUrl: `${serverUrl}/cover.jpg`,
+  imageUrl: `${serverUrl()}/cover.jpg`,
   author: "Arthur N",
   managingEditor: "arthurn@duck.com",
   generator: "https://github.com/uqe/youtube2rss",
@@ -36,18 +38,8 @@ const feedOptions = {
       ],
     },
   ],
-  itunesImage: `${serverUrl}/cover.jpg`,
+  itunesImage: `${serverUrl()}/cover.jpg`,
 };
-
-export interface Video {
-  video_id: string;
-  video_name: string;
-  video_description: string | null;
-  video_url: string;
-  video_added_date: string;
-  video_path: string;
-  video_length: string;
-}
 
 export const generateFeed = async (allVideos: Video[]) => {
   const feed = new Podcast(feedOptions);
@@ -56,16 +48,16 @@ export const generateFeed = async (allVideos: Video[]) => {
     feed.addItem({
       title: item.video_name,
       description: item.video_description ? item.video_description : "",
-      url: `${serverUrl}/files/${item.video_id}.mp3`,
+      url: `${serverUrl()}/files/${item.video_id}.mp3`,
       guid: item.video_id,
       author: "Arthur N",
       date: item.video_added_date,
       enclosure: !Deno.env.get("IS_TEST")
         ? {
-          url: `${serverUrl}/files/${item.video_id}.mp3`,
-          file: item.video_path,
-          type: "audio/mp3",
-        }
+            url: `${serverUrl()}/files/${item.video_id}.mp3`,
+            file: item.video_path,
+            type: "audio/mp3",
+          }
         : undefined,
       itunesAuthor: "Arthur N",
       itunesExplicit: false,
@@ -75,11 +67,9 @@ export const generateFeed = async (allVideos: Video[]) => {
     });
   });
 
-  const xml = Deno.env.get("IS_TEST") ? feed.buildXml() : feed.buildXml({ indent: "  " });
-
-  Deno.writeTextFileSync(rssFile, xml);
+  Deno.writeTextFileSync(rssFile(), xml(feed));
 
   if (isS3Configured()) {
-    await uploadXmlToS3(rssFile);
+    await uploadXmlToS3(rssFile());
   }
 };

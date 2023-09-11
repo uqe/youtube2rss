@@ -1,5 +1,6 @@
 import { afterAll, assertEquals, describe, it, parse } from "../deps.ts";
-import { generateFeed, Video } from "../generate-feed.ts";
+import { generateFeed } from "../generate-feed.ts";
+import { Video } from "../types.d.ts";
 
 const serverUrl = "https://test.com";
 

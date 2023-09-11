@@ -2,7 +2,7 @@ import { convertVideo } from "./convert-video.ts";
 import { isVideoExists } from "./db.ts";
 import { getInfo, Message, ytdl } from "./deps.ts";
 
-const download = async (videoId: string, handler?: (text: string) => Promise<Message.TextMessage>) => {
+export const download = async (videoId: string, handler?: (text: string) => Promise<Message.TextMessage>) => {
   try {
     const info = await getInfo(videoId);
 
@@ -34,5 +34,3 @@ const download = async (videoId: string, handler?: (text: string) => Promise<Mes
     console.error(error);
   }
 };
-
-export { download };
