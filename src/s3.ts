@@ -37,3 +37,13 @@ export const uploadXmlToS3 = async (filePath: string) => {
     console.error(`Error uploading XML to S3: ${error}`);
   }
 };
+
+export const isCoverImageExistsOnS3 = async () => {
+  try {
+    await s3client.getObject(`cover.jpg`);
+  } catch (error) {
+    const file = await Deno.open("./public/cover.jpg", { read: true });
+    const readableStream = file.readable;
+    await s3client.putObject("cover.jpg", readableStream);
+  }
+};

@@ -1,6 +1,6 @@
 import { existsSync, Podcast } from "./deps.ts";
 import { isS3Configured } from "./helpers.ts";
-import { uploadXmlToS3 } from "./s3.ts";
+import { isCoverImageExistsOnS3, uploadXmlToS3 } from "./s3.ts";
 
 const serverUrl = () => (Deno.env.get("IS_TEST") ? "https://test.com" : Deno.env.get("SERVER_URL"));
 
@@ -77,5 +77,6 @@ export const generateFeed = async (allVideos: Video[]) => {
 
   if (isS3Configured()) {
     await uploadXmlToS3(rssFile());
+    await isCoverImageExistsOnS3();
   }
 };
