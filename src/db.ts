@@ -1,14 +1,14 @@
 import { DB, exists } from "./deps.ts";
 
-const dbFile = Deno.env.get("IS_TEST") ? "youtube2rss.test.db" : "youtube2rss.db";
+export const dbFile = () => (Deno.env.get("IS_TEST") ? "youtube2rss.test.db" : "youtube2rss.db");
 
 export const createDb = async () => {
-  if (await exists(dbFile)) {
+  if (await exists(dbFile())) {
     console.log("Database already exists");
     return;
   }
 
-  const db = new DB(dbFile, { mode: "create" });
+  const db = new DB(dbFile(), { mode: "create" });
   db.execute(`
     CREATE TABLE IF NOT EXISTS videos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,7 +35,7 @@ export const addVideoToDb = async (
   videoPath: string,
   videoLength: string,
 ) => {
-  const db = new DB(dbFile, { mode: "write" });
+  const db = new DB(dbFile(), { mode: "write" });
 
   await db.query(
     "INSERT INTO videos (video_id, video_name, video_description, video_url, video_added_date, video_path, video_length) VALUES (?,?,?,?,?,?,?)",
@@ -46,7 +46,7 @@ export const addVideoToDb = async (
 };
 
 export const getAllVideos = () => {
-  const db = new DB(dbFile, { mode: "read" });
+  const db = new DB(dbFile(), { mode: "read" });
 
   const videos = db.queryEntries<{
     video_id: string;
@@ -62,7 +62,7 @@ export const getAllVideos = () => {
 };
 
 export const isVideoExists = (videoId: string) => {
-  const db = new DB(dbFile, { mode: "read" });
+  const db = new DB(dbFile(), { mode: "read" });
   const video = db.query<[[number]]>("SELECT EXISTS (SELECT * FROM videos WHERE video_id = :videoId)", { videoId });
   db.close();
   return Boolean(video[0][0]);

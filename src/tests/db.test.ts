@@ -1,7 +1,7 @@
-import { addVideoToDb, createDb, getAllVideos, isVideoExists } from "../db.ts";
-import { afterAll, afterEach, assertEquals, assertObjectMatch, beforeAll, DB, describe, it } from "../deps.ts";
+import { addVideoToDb, createDb, dbFile, getAllVideos, isVideoExists } from "../db.ts";
+import { afterAll, afterEach, assertEquals, assertObjectMatch, beforeAll, DB, describe, exists, it } from "../deps.ts";
 
-const dbFile = "youtube2rss.test.db";
+const testDbFile = "youtube2rss.test.db";
 
 describe("db tests", () => {
   beforeAll(async () => {
@@ -12,13 +12,13 @@ describe("db tests", () => {
     // Clear the database after each test
     // This ensures that each test is independent of the others
     // and doesn't affect the state of the database
-    const db = new DB(dbFile, { mode: "write" });
+    const db = new DB(testDbFile, { mode: "write" });
     db.execute("DELETE FROM videos");
     db.close();
   });
 
   afterAll(() => {
-    Deno.remove(dbFile);
+    Deno.remove(testDbFile);
   });
 
   describe("addVideoToDb", () => {
@@ -117,6 +117,22 @@ describe("db tests", () => {
     it("should return false if the video does not exist in the database", () => {
       const exists = isVideoExists("123");
       assertEquals(exists, false);
+    });
+  });
+
+  describe("createDb", () => {
+    it("createDb should create a database file if it does not exist", async () => {
+      await createDb();
+      const dbFileExists = await exists(testDbFile);
+      assertEquals(dbFileExists, true);
+    });
+  });
+
+  describe("dbFile", () => {
+    it("dbFile returns correct file name", () => {
+      const expected = "youtube2rss.test.db";
+      const actual = dbFile();
+      assertEquals(actual, expected);
     });
   });
 });
