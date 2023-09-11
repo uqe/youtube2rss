@@ -4,6 +4,7 @@ youtube2rss.test.db
 
 # Public folder
 public/files/*
+public/rss.xml
 
 # Exception to the rule
 !public/files/.gitkeep
