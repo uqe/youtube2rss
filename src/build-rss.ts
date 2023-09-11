@@ -6,6 +6,14 @@ if (!Deno.env.get("SERVER_URL")) {
   Deno.exit(1);
 }
 
-console.log("Building RSS feed...");
-generateFeed(getAllVideos());
-console.log("RSS feed built.");
+const buildRss = async () => {
+  try {
+    console.log("Building RSS feed...");
+    await generateFeed(getAllVideos());
+    console.log("RSS feed built.");
+  } catch (error) {
+    throw error;
+  }
+};
+
+buildRss();
