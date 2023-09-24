@@ -4,15 +4,15 @@ import { parse } from "https://deno.land/x/xml@2.1.1/mod.ts";
 import ytdl from "https://deno.land/x/ytdl_core@v0.1.2/mod.ts";
 import { Podcast } from "https://esm.sh/podcast@2.0.1";
 
-export type { Message } from "https://deno.land/x/grammy_types@v3.2.1/message.ts";
+export type { Message } from "https://deno.land/x/grammy_types@v3.3.0/message.ts";
 export type { VideoInfo } from "https://deno.land/x/ytdl_core@v0.1.2/src/types.ts";
 
-export { exists, existsSync } from "https://deno.land/std@0.201.0/fs/mod.ts";
-export { Bot } from "https://deno.land/x/grammy@v1.18.1/mod.ts";
+export { exists, existsSync } from "https://deno.land/std@0.202.0/fs/mod.ts";
+export { Bot } from "https://deno.land/x/grammy@v1.19.0/mod.ts";
 export { DB } from "https://deno.land/x/sqlite@v3.8/mod.ts";
 export { getInfo } from "https://deno.land/x/ytdl_core@v0.1.2/mod.ts";
 
-export { assertEquals, assertObjectMatch } from "https://deno.land/std@0.201.0/assert/mod.ts";
-export { afterAll, afterEach, beforeAll, describe, it } from "https://deno.land/std@0.201.0/testing/bdd.ts";
+export { assertEquals, assertObjectMatch } from "https://deno.land/std@0.202.0/assert/mod.ts";
+export { afterAll, afterEach, beforeAll, describe, it } from "https://deno.land/std@0.202.0/testing/bdd.ts";
 
 export { FfmpegClass, parse, Podcast, S3Client, ytdl };
