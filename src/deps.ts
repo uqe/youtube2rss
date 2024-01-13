@@ -7,12 +7,12 @@ import { Podcast } from "https://esm.sh/podcast@2.0.1";
 export type { Message } from "https://deno.land/x/grammy_types@v3.4.6/message.ts";
 export type { VideoInfo } from "https://deno.land/x/ytdl_core@v0.1.2/src/types.ts";
 
-export { exists, existsSync } from "https://deno.land/std@0.211.0/fs/mod.ts";
+export { exists, existsSync } from "https://deno.land/std@0.212.0/fs/mod.ts";
 export { Bot } from "https://deno.land/x/grammy@v1.20.3/mod.ts";
 export { DB } from "https://deno.land/x/sqlite@v3.8/mod.ts";
 export { getInfo } from "https://deno.land/x/ytdl_core@v0.1.2/mod.ts";
 
-export { assertEquals, assertObjectMatch } from "https://deno.land/std@0.211.0/assert/mod.ts";
-export { afterAll, afterEach, beforeAll, describe, it } from "https://deno.land/std@0.211.0/testing/bdd.ts";
+export { assertEquals, assertObjectMatch } from "https://deno.land/std@0.212.0/assert/mod.ts";
+export { afterAll, afterEach, beforeAll, describe, it } from "https://deno.land/std@0.212.0/testing/bdd.ts";
 
 export { FfmpegClass, parse, Podcast, S3Client, ytdl };
