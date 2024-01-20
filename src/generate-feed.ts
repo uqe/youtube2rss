@@ -1,6 +1,7 @@
 import { existsSync, Podcast } from "./deps.ts";
 import { isS3Configured } from "./helpers.ts";
 import { isCoverImageExistsOnS3, uploadXmlToS3 } from "./s3.ts";
+import { Video } from "./types.ts";
 
 const serverUrl = () => (Deno.env.get("IS_TEST") ? "https://test.com" : Deno.env.get("SERVER_URL"));
 
@@ -44,7 +45,7 @@ const feedOptions = {
 export const generateFeed = async (allVideos: Video[]) => {
   const feed = new Podcast(feedOptions);
 
-  allVideos.forEach((item) => {
+  allVideos.forEach((item: Video) => {
     const fileExists = existsSync(item.video_path);
 
     if (!fileExists && !Deno.env.get("IS_TEST")) {

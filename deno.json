@@ -4,7 +4,7 @@
     "serve": "file_server --port 8080 public/",
     "telegram": "deno run --allow-net --allow-write --allow-read --allow-run --allow-env src/telegram.ts",
     "prepare": "deno run --allow-read --allow-write --allow-env src/prepare.ts",
-    "tests": "IS_TEST=true deno test --allow-read --allow-write --allow-env"
+    "tests": "IS_TEST=true deno test --allow-read --allow-write --allow-env --allow-run"
   },
   "lock": "./deno.lock",
   "fmt": {
