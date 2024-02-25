@@ -19,7 +19,6 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    security-updates-only: true
     labels:
       - "dependencies"
       - "security"
