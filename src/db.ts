@@ -4,7 +4,7 @@ export const dbName = () => (Bun.env.IS_TEST ? "youtube2rss.test.db" : "youtube2
 
 export const createDb = async () => {
   const dbFile = Bun.file(dbName());
-  if (await dbFile.exists()) {
+  if ((await dbFile.exists()) && !Bun.env.IS_TEST) {
     console.log("Database already exists");
     return;
   }
@@ -24,7 +24,10 @@ export const createDb = async () => {
   `);
 
   db.close();
-  console.log("Database created!");
+
+  if (!Bun.env.IS_TEST) {
+    console.log("Database created!");
+  }
 };
 
 export const addVideoToDb = async (
