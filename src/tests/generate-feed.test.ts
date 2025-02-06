@@ -1,6 +1,6 @@
 import { parse } from "@libs/xml";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { generateFeed } from "../generate-feed.ts";
+import { generateFeed, rssFile, serverUrl } from "../generate-feed.ts";
 import { type Video } from "../types.ts";
 import { formatSeconds } from "./../helpers";
 
@@ -14,10 +14,6 @@ interface RSSDoc {
     };
   };
 }
-
-const serverUrl = "https://test.com";
-
-const rssFile = "./public/rss.test.xml";
 
 // Mock data for testing
 const mockVideos: Video[] = [
@@ -52,12 +48,12 @@ describe("generate-feed tests", () => {
   });
 
   afterAll(async () => {
-    await Bun.file(rssFile).delete();
+    await Bun.file(rssFile()).delete();
   });
 
   describe("generateFeed", () => {
     it("should have correct RSS channel metadata", async () => {
-      const xml = Bun.file(rssFile);
+      const xml = Bun.file(rssFile());
       const byteArray = new TextDecoder().decode(await xml.bytes());
       const doc = parse(byteArray) as unknown as RSSDoc;
 
@@ -70,13 +66,13 @@ describe("generate-feed tests", () => {
 
   describe("generateFeed", () => {
     it("should generate correct RSS items for each video", async () => {
-      const xml = Bun.file(rssFile);
+      const xml = Bun.file(rssFile());
       const byteArray = new TextDecoder().decode(await xml.bytes());
 
       mockVideos.forEach((video) => {
         const title = `<title><![CDATA[${video.video_name}]]></title>`;
         const description = `<description><![CDATA[${video.video_description || ""}]]></description>`;
-        const link = `<link>${serverUrl}/files/${video.video_id}.mp3</link>`;
+        const link = `<link>${serverUrl()}/files/${video.video_id}.mp3</link>`;
         const guid = `<guid isPermaLink="false">${video.video_id}</guid>`;
         const creator = `<dc:creator><![CDATA[Arthur N]]></dc:creator>`;
         const date = `<pubDate>${new Date(video.video_added_date).toUTCString()}</pubDate>`;

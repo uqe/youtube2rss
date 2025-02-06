@@ -3,9 +3,9 @@ import { isS3Configured } from "./helpers.ts";
 import { isCoverImageExistsOnS3, uploadXmlToS3 } from "./s3.ts";
 import { type Video } from "./types.ts";
 
-const serverUrl = () => (Bun.env.IS_TEST ? "https://test.com" : Bun.env.SERVER_URL);
+export const serverUrl = () => (Bun.env.IS_TEST ? "https://test.com" : Bun.env.SERVER_URL);
 
-const rssFile = () => (Bun.env.IS_TEST ? "./public/rss.test.xml" : "./public/rss.xml");
+export const rssFile = () => (Bun.env.IS_TEST ? "./public/rss.test.xml" : "./public/rss.xml");
 
 const xml = (feed: Podcast) => (Bun.env.IS_TEST ? feed.buildXml() : feed.buildXml({ indent: "  " }));
 
