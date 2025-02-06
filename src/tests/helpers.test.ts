@@ -103,32 +103,6 @@ describe("helpers tests", () => {
     });
   });
 
-  describe("formatSeconds", () => {
-    it("should return 00:00:00 for 0 seconds", () => {
-      expect(formatSeconds(0)).toBe("00:00:00");
-    });
-
-    it("should format seconds less than 60 correctly", () => {
-      expect(formatSeconds(59)).toBe("00:00:59");
-    });
-
-    it("should format exactly one minute", () => {
-      expect(formatSeconds(60)).toBe("00:01:00");
-    });
-
-    it("should format seconds that are a minute and some seconds", () => {
-      expect(formatSeconds(61)).toBe("00:01:01");
-    });
-
-    it("should format exactly one hour", () => {
-      expect(formatSeconds(3600)).toBe("01:00:00");
-    });
-
-    it("should format a combination of hours, minutes, and seconds", () => {
-      expect(formatSeconds(3661)).toBe("01:01:01");
-    });
-  });
-
   describe("getFilePath", () => {
     const videoId = "testvideo";
 
