@@ -1,9 +1,9 @@
 import { getAllVideos } from "./db.ts";
 import { generateFeed } from "./generate-feed.ts";
 
-if (!Deno.env.get("SERVER_URL")) {
+if (!Bun.env.SERVER_URL) {
   console.error("SERVER_URL variable is missing.");
-  Deno.exit(1);
+  process.exit(1);
 }
 
 const buildRss = async () => {

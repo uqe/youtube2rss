@@ -1,13 +1,13 @@
-import { existsSync, Podcast } from "./deps.ts";
+import { Podcast } from "podcast";
 import { isS3Configured } from "./helpers.ts";
 import { isCoverImageExistsOnS3, uploadXmlToS3 } from "./s3.ts";
-import { Video } from "./types.ts";
+import { type Video } from "./types.ts";
 
-const serverUrl = () => (Deno.env.get("IS_TEST") ? "https://test.com" : Deno.env.get("SERVER_URL"));
+const serverUrl = () => (Bun.env.IS_TEST ? "https://test.com" : Bun.env.SERVER_URL);
 
-const rssFile = () => (Deno.env.get("IS_TEST") ? "./public/rss.test.xml" : "./public/rss.xml");
+const rssFile = () => (Bun.env.IS_TEST ? "./public/rss.test.xml" : "./public/rss.xml");
 
-const xml = (feed: Podcast) => (Deno.env.get("IS_TEST") ? feed.buildXml() : feed.buildXml({ indent: "  " }));
+const xml = (feed: Podcast) => (Bun.env.IS_TEST ? feed.buildXml() : feed.buildXml({ indent: "  " }));
 
 const feedOptions = {
   title: "YouTube",
@@ -45,10 +45,11 @@ const feedOptions = {
 export const generateFeed = async (allVideos: Video[]) => {
   const feed = new Podcast(feedOptions);
 
-  allVideos.forEach((item: Video) => {
-    const fileExists = existsSync(item.video_path);
+  for (const item of allVideos) {
+    const videoFile = Bun.file(item.video_path);
+    const fileExists = await videoFile.exists();
 
-    if (!fileExists && !Deno.env.get("IS_TEST")) {
+    if (!fileExists && !Bun.env.IS_TEST) {
       console.log(`File ${item.video_path} doesn't exist. Skipping...`);
     } else {
       feed.addItem({
@@ -58,12 +59,12 @@ export const generateFeed = async (allVideos: Video[]) => {
         guid: item.video_id,
         author: "Arthur N",
         date: item.video_added_date,
-        enclosure: !Deno.env.get("IS_TEST")
+        enclosure: !Bun.env.IS_TEST
           ? {
-            url: `${serverUrl()}/files/${item.video_id}.mp3`,
-            file: item.video_path,
-            type: "audio/mp3",
-          }
+              url: `${serverUrl()}/files/${item.video_id}.mp3`,
+              file: item.video_path,
+              type: "audio/mp3",
+            }
           : undefined,
         itunesAuthor: "Arthur N",
         itunesExplicit: false,
@@ -72,9 +73,9 @@ export const generateFeed = async (allVideos: Video[]) => {
         itunesDuration: item.video_length,
       });
     }
-  });
+  }
 
-  Deno.writeTextFileSync(rssFile(), xml(feed));
+  Bun.write(rssFile(), xml(feed));
 
   if (isS3Configured()) {
     await uploadXmlToS3(rssFile());

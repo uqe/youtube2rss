@@ -5,5 +5,5 @@ export interface Video {
   video_url: string;
   video_added_date: string;
   video_path: string;
-  video_length: string;
+  video_length: number;
 }

@@ -1,5 +1,5 @@
-import { assertEquals, describe, it } from "../deps.ts";
-import { getYoutubeVideoId, isS3Configured } from "../helpers.ts";
+import { describe, expect, it } from "bun:test";
+import { formatSeconds, getFilePath, getYoutubeVideoId, isS3Configured } from "../helpers.ts";
 
 describe("helpers tests", () => {
   describe("getYoutubeVideoId", () => {
@@ -13,56 +13,142 @@ describe("helpers tests", () => {
       ];
 
       invalidUrls.forEach((url) => {
-        assertEquals(getYoutubeVideoId(url), null);
+        expect(getYoutubeVideoId(url)).toBeNull();
       });
     });
-  });
 
-  describe("getYoutubeVideoId", () => {
     it("getYoutubeVideoId should return the video ID for a regular YouTube URL", () => {
+      const id = "dQw4w9WgXcQ";
+
       const validUrls = [
-        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        "https://youtu.be/dQw4w9WgXcQ",
-        "https://www.youtube.com/v/dQw4w9WgXcQ",
-        "https://www.youtube.com/shorts/dQw4w9WgXcQ",
-        "https://youtu.be/dQw4w9WgXcQ?t=95",
+        `https://www.youtube.com/watch?v=${id}`,
+        `https://youtu.be/${id}`,
+        `https://www.youtube.com/v/${id}`,
+        `https://www.youtube.com/shorts/${id}`,
+        `https://youtu.be/${id}?t=95`,
       ];
 
       validUrls.forEach((url) => {
-        assertEquals(getYoutubeVideoId(url), "dQw4w9WgXcQ");
+        expect(getYoutubeVideoId(url)).toBe(id);
       });
+    });
+
+    it("getYoutubeVideoId should correctly ignore extra query parameters", () => {
+      const id = "dQw4w9WgXcQ";
+      const url = `https://www.youtube.com/watch?v=${id}&list=PL1234567890`;
+      expect(getYoutubeVideoId(url)).toBe(id);
+    });
+
+    it("getYoutubeVideoId should handle URLs with mixed case", () => {
+      const id = "dQw4w9WgXcQ";
+      const url = `https://YOUTU.be/${id}`;
+      expect(getYoutubeVideoId(url)).toBe(id);
     });
   });
 
   describe("isS3Configured", () => {
     it("isS3Configured returns true when all S3 environment variables are set", () => {
-      Deno.env.set("S3_ENDPOINT", "example.com");
-      Deno.env.set("S3_BUCKET", "my-bucket");
-      Deno.env.set("S3_ACCESS_KEY", "my-access-key");
-      Deno.env.set("S3_SECRET_KEY", "my-secret-key");
+      Bun.env.S3_ENDPOINT = "example.com";
+      Bun.env.S3_BUCKET = "my-bucket";
+      Bun.env.S3_ACCESS_KEY = "my-access-key";
+      Bun.env.S3_SECRET_KEY = "my-secret-key";
 
       const result = isS3Configured();
-      assertEquals(result, true);
+      expect(result).toBe(true);
 
-      Deno.env.delete("S3_ENDPOINT");
-      Deno.env.delete("S3_BUCKET");
-      Deno.env.delete("S3_ACCESS_KEY");
-      Deno.env.delete("S3_SECRET_KEY");
+      Bun.env.S3_ENDPOINT = "";
+      Bun.env.S3_BUCKET = "";
+      Bun.env.S3_ACCESS_KEY = "";
+      Bun.env.S3_SECRET_KEY = "";
+    });
+
+    it("isS3Configured returns false when any S3 environment variable is missing", () => {
+      Bun.env.S3_ENDPOINT = "example.com";
+      Bun.env.S3_BUCKET = "my-bucket";
+      Bun.env.S3_ACCESS_KEY = "my-access-key";
+      // S3_SECRET_KEY is missing
+
+      const result = isS3Configured();
+      expect(result).toBe(false);
+
+      Bun.env.S3_ENDPOINT = "";
+      Bun.env.S3_BUCKET = "";
+      Bun.env.S3_ACCESS_KEY = "";
     });
   });
 
-  describe("isS3Configured", () => {
-    it("isS3Configured returns false when any S3 environment variable is missing", () => {
-      Deno.env.set("S3_ENDPOINT", "example.com");
-      Deno.env.set("S3_BUCKET", "my-bucket");
-      Deno.env.set("S3_ACCESS_KEY", "my-access-key");
+  describe("formatSeconds", () => {
+    it("should return 00:00:00 for 0 seconds", () => {
+      expect(formatSeconds(0)).toBe("00:00:00");
+    });
 
-      const result = isS3Configured();
-      assertEquals(result, false);
+    it("should format seconds less than 60 correctly", () => {
+      expect(formatSeconds(59)).toBe("00:00:59");
+    });
 
-      Deno.env.delete("S3_ENDPOINT");
-      Deno.env.delete("S3_BUCKET");
-      Deno.env.delete("S3_ACCESS_KEY");
+    it("should format exactly one minute", () => {
+      expect(formatSeconds(60)).toBe("00:01:00");
+    });
+
+    it("should format seconds that are a minute and some seconds", () => {
+      expect(formatSeconds(61)).toBe("00:01:01");
+    });
+
+    it("should format exactly one hour", () => {
+      expect(formatSeconds(3600)).toBe("01:00:00");
+    });
+
+    it("should format a combination of hours, minutes, and seconds", () => {
+      expect(formatSeconds(3661)).toBe("01:01:01");
+    });
+  });
+
+  describe("formatSeconds", () => {
+    it("should return 00:00:00 for 0 seconds", () => {
+      expect(formatSeconds(0)).toBe("00:00:00");
+    });
+
+    it("should format seconds less than 60 correctly", () => {
+      expect(formatSeconds(59)).toBe("00:00:59");
+    });
+
+    it("should format exactly one minute", () => {
+      expect(formatSeconds(60)).toBe("00:01:00");
+    });
+
+    it("should format seconds that are a minute and some seconds", () => {
+      expect(formatSeconds(61)).toBe("00:01:01");
+    });
+
+    it("should format exactly one hour", () => {
+      expect(formatSeconds(3600)).toBe("01:00:00");
+    });
+
+    it("should format a combination of hours, minutes, and seconds", () => {
+      expect(formatSeconds(3661)).toBe("01:01:01");
+    });
+  });
+
+  describe("getFilePath", () => {
+    const videoId = "testvideo";
+
+    it("should return test path when IS_TEST is true", () => {
+      Bun.env.IS_TEST = "true";
+      expect(getFilePath(videoId, "mp3")).toBe(`./src/tests/data/${videoId}.mp3`);
+      expect(getFilePath(videoId, "mp4")).toBe(`./src/tests/data/${videoId}.mp4`);
+    });
+
+    it("should return public path when IS_TEST is false", () => {
+      Bun.env.IS_TEST = "";
+      expect(getFilePath(videoId, "mp3")).toBe(`./public/files/${videoId}.mp3`);
+      expect(getFilePath(videoId, "mp4")).toBe(`./public/files/${videoId}.mp4`);
+    });
+
+    it("should handle multiple calls consistently", () => {
+      Bun.env.IS_TEST = "true";
+      const path1 = getFilePath(videoId, "mp3");
+      const path2 = getFilePath(videoId, "mp3");
+      expect(path1).toBe(path2);
     });
   });
 });

@@ -1,13 +1,9 @@
-import { Bot } from "./deps.ts";
+import { Bot, GrammyError, HttpError } from "grammy";
 import { download } from "./download.ts";
 import { getYoutubeVideoId } from "./helpers.ts";
+import { logger } from "./logger";
 
-if (!Deno.env.get("TELEGRAM_BOT_TOKEN") || !Deno.env.get("SERVER_URL")) {
-  console.error("TELEGRAM_BOT_TOKEN or SERVER_URL variables are missing.");
-  Deno.exit(1);
-}
-
-const bot = new Bot(Deno.env.get("TELEGRAM_BOT_TOKEN") as string);
+const bot = new Bot(Bun.env.TELEGRAM_BOT_TOKEN as string);
 
 bot.command("start", (ctx) => ctx.reply("Welcome! Up and running."));
 
@@ -35,3 +31,17 @@ bot.on("message", async (ctx) => {
 });
 
 bot.start();
+logger.success("Bot is up and running!");
+
+bot.catch((err) => {
+  const ctx = err.ctx;
+  logger.error(`Error while handling update ${ctx.update.update_id}:`);
+  const e = err.error;
+  if (e instanceof GrammyError) {
+    console.error("Error in request:", e.description);
+  } else if (e instanceof HttpError) {
+    console.error("Could not contact Telegram:", e);
+  } else {
+    console.error("Unknown error:", e);
+  }
+});

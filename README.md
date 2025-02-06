@@ -83,3 +83,8 @@ If all variables are set, the bot will store `.mp3` files and generated `rss.xml
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## TODO list
+
+[] Update README
+[] Add pm2

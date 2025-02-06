@@ -1,15 +1,15 @@
-import { convertVideo } from "./convert-video.ts";
-import { getAllVideos, isVideoExists } from "./db.ts";
-import { getInfo, Message, ytdl } from "./deps.ts";
+import type { Message } from "grammy/types";
+import youtubedl, { type Payload } from "youtube-dl-exec";
+import { addVideoToDb, getAllVideos, isVideoExists } from "./db.ts";
 import { generateFeed } from "./generate-feed.ts";
-import { getFilePath, isS3Configured } from "./helpers.ts";
+import { getVideoInfo, isS3Configured } from "./helpers.ts";
 import { uploadFileOnS3 } from "./s3.ts";
 
 export const download = async (videoId: string, handler?: (text: string) => Promise<Message.TextMessage>) => {
-  try {
-    const info = await getInfo(videoId);
+  const outputFilePath = `./public/files/${videoId}.mp3`;
 
-    if (isVideoExists(info.videoDetails.videoId)) {
+  try {
+    if (isVideoExists(videoId)) {
       console.log("Video already exists");
       handler && handler("Video already exists. Find it in the RSS feed.");
       return;
@@ -17,25 +17,42 @@ export const download = async (videoId: string, handler?: (text: string) => Prom
 
     console.log("Start downloading");
 
-    const stream = await ytdl(videoId, { filter: "audioonly" });
-
-    const chunks: Uint8Array[] = [];
-
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-
-    const blob = new Blob(chunks);
-
-    await Deno.writeFile(`./public/files/${info.videoDetails.videoId}.mp4`, new Uint8Array(await blob.arrayBuffer()));
+    await youtubedl
+      .exec(
+        `https://youtu.be/watch?v=${videoId}`,
+        {
+          extractAudio: true,
+          audioFormat: "mp3",
+          noCheckCertificates: true,
+          noWarnings: true,
+          output: outputFilePath,
+          preferFreeFormats: true,
+          writeInfoJson: false,
+          quiet: false,
+          embedThumbnail: true,
+          // addHeader: ["referer:youtube.com", "user-agent:googlebot"],
+        },
+        { timeout: 100000, killSignal: "SIGKILL" }
+      )
+      .catch((err) => err);
 
     console.log("Downloaded successfully");
 
-    await convertVideo(info, handler);
+    const info: Payload = await getVideoInfo(videoId);
 
-    if (isS3Configured() && !Deno.env.get("IS_TEST")) {
-      await uploadFileOnS3(videoId, getFilePath(videoId, "mp3"));
+    if (isS3Configured() && !Bun.env.IS_TEST) {
+      await uploadFileOnS3(videoId, outputFilePath);
     }
+
+    await addVideoToDb(
+      info.id,
+      info.title,
+      info.description,
+      info.webpage_url,
+      new Date().toISOString(),
+      outputFilePath,
+      info.duration
+    );
 
     console.log("Start regenerating RSS feed");
     generateFeed(getAllVideos());
