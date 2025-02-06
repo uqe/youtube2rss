@@ -11,6 +11,7 @@ public/rss.xml
 
 # Node modules
 node_modules/
+bun.lock
 
 # macOS
 .DS_Store
