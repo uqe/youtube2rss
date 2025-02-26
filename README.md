@@ -77,7 +77,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## TODO list
 
 - [x] Update README
-- [] Add pm2
-- [] Better logging
-- [] Add thumbnails podcast episodes
-- [] Parse timestamps in video description and add them to the podcast feed
+- [ ] Add pm2
+- [ ] Better logging
+- [ ] Add thumbnails podcast episodes
+- [ ] Parse timestamps in video description and add them to the podcast feed
