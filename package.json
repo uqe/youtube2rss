@@ -1,0 +1,31 @@
+{
+  "name": "youtube2rss",
+  "module": "src/telegram.ts",
+  "type": "module",
+  "scripts": {
+    "build-rss": "bun --env-file=.env.dev src/build-rss.ts",
+    "start": "bun --env-file=.env src/index.ts",
+    "start:dev": "bun --env-file=.env.dev src/index.ts",
+    "serve": "bun --env-file=.env run src/serve.ts",
+    "serve:dev": "bun --env-file=.env.dev run src/serve.ts",
+    "prepare": "bun --env-file=.env.dev run src/prepare.ts",
+    "tests": "IS_TEST=true bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@libs/xml": "npm:@jsr/libs__xml"
+  },
+  "peerDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "adze": "^2.2.1",
+    "grammy": "^1.35.0",
+    "podcast": "^2.0.1",
+    "youtube-dl-exec": "^3.0.16"
+  },
+  "trustedDependencies": [
+    "es5-ext",
+    "youtube-dl-exec"
+  ]
+}

@@ -1,13 +1,13 @@
-import { existsSync, Podcast } from "./deps.ts";
+import { Podcast } from "podcast";
 import { isS3Configured } from "./helpers.ts";
 import { isCoverImageExistsOnS3, uploadXmlToS3 } from "./s3.ts";
-import { Video } from "./types.ts";
+import { type Video } from "./types.ts";
 
-const serverUrl = () => (Deno.env.get("IS_TEST") ? "https://test.com" : Deno.env.get("SERVER_URL"));
+export const serverUrl = () => (Bun.env.IS_TEST ? "https://test.com" : Bun.env.SERVER_URL);
 
-const rssFile = () => (Deno.env.get("IS_TEST") ? "./public/rss.test.xml" : "./public/rss.xml");
+export const rssFile = () => (Bun.env.IS_TEST ? "./public/rss.test.xml" : "./public/rss.xml");
 
-const xml = (feed: Podcast) => (Deno.env.get("IS_TEST") ? feed.buildXml() : feed.buildXml({ indent: "  " }));
+const xml = (feed: Podcast) => (Bun.env.IS_TEST ? feed.buildXml() : feed.buildXml({ indent: "  " }));
 
 const feedOptions = {
   title: "YouTube",
@@ -19,10 +19,10 @@ const feedOptions = {
   managingEditor: "arthurn@duck.com",
   generator: "https://github.com/uqe/youtube2rss",
   webMaster: "arthurn@duck.com",
-  copyright: "2023 Arthur N",
+  copyright: "2025 Arthur N",
   language: "ru",
   categories: ["Education", "Self-Improvement"],
-  pubDate: new Date(Date.parse("2023-04-16")),
+  pubDate: new Date(Date.parse("2025-02-26")),
   ttl: 5,
   itunesAuthor: "Arthur N",
   itunesSubtitle: "YouTube personal feed",
@@ -45,36 +45,37 @@ const feedOptions = {
 export const generateFeed = async (allVideos: Video[]) => {
   const feed = new Podcast(feedOptions);
 
-  allVideos.forEach((item: Video) => {
-    const fileExists = existsSync(item.video_path);
+  for (const item of allVideos) {
+    const videoFile = Bun.file(item.video_path);
+    const fileExists = await videoFile.exists();
 
-    if (!fileExists && !Deno.env.get("IS_TEST")) {
+    if (!fileExists && !Bun.env.IS_TEST) {
       console.log(`File ${item.video_path} doesn't exist. Skipping...`);
     } else {
       feed.addItem({
         title: item.video_name,
-        description: item.video_description ? item.video_description : "",
+        description: item.video_description ?? "",
         url: `${serverUrl()}/files/${item.video_id}.mp3`,
         guid: item.video_id,
         author: "Arthur N",
         date: item.video_added_date,
-        enclosure: !Deno.env.get("IS_TEST")
+        enclosure: !Bun.env.IS_TEST
           ? {
-            url: `${serverUrl()}/files/${item.video_id}.mp3`,
-            file: item.video_path,
-            type: "audio/mp3",
-          }
+              url: `${serverUrl()}/files/${item.video_id}.mp3`,
+              file: item.video_path,
+              type: "audio/mp3",
+            }
           : undefined,
         itunesAuthor: "Arthur N",
         itunesExplicit: false,
         itunesSubtitle: item.video_name,
-        itunesSummary: item.video_name,
+        itunesSummary: item.video_description ?? "",
         itunesDuration: item.video_length,
       });
     }
-  });
+  }
 
-  Deno.writeTextFileSync(rssFile(), xml(feed));
+  Bun.write(rssFile(), xml(feed));
 
   if (isS3Configured()) {
     await uploadXmlToS3(rssFile());

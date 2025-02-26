@@ -1,5 +1,4 @@
-import { addVideoToDb } from "./db.ts";
-import { VideoInfo } from "./deps.ts";
+import youtubedl, { type Payload } from "youtube-dl-exec";
 
 export const getYoutubeVideoId = (message: string) => {
   const regex =
@@ -10,25 +9,32 @@ export const getYoutubeVideoId = (message: string) => {
 };
 
 export const isS3Configured = () => {
-  return Boolean(
-    Deno.env.get("S3_ENDPOINT") &&
-      Deno.env.get("S3_BUCKET") &&
-      Deno.env.get("S3_ACCESS_KEY") &&
-      Deno.env.get("S3_SECRET_KEY"),
-  );
+  return Boolean(Bun.env.S3_ENDPOINT && Bun.env.S3_BUCKET && Bun.env.S3_ACCESS_KEY && Bun.env.S3_SECRET_KEY);
 };
 
 export const getFilePath = (videoId: string, format: "mp3" | "mp4") =>
-  Deno.env.get("IS_TEST") ? `./src/tests/data/${videoId}.${format}` : `./public/files/${videoId}.${format}`;
+  Bun.env.IS_TEST ? `./src/tests/data/${videoId}.${format}` : `./public/files/${videoId}.${format}`;
 
-export const updateDb = async (info: VideoInfo) => {
-  await addVideoToDb(
-    info.videoDetails.videoId,
-    info.videoDetails.title,
-    info.videoDetails.description,
-    info.videoDetails.video_url,
-    new Date().toISOString(),
-    `./public/files/${info.videoDetails.videoId}.mp3`,
-    info.videoDetails.lengthSeconds,
-  );
+export const formatSeconds = (seconds: number) => {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  const pad = (num: number) => String(num).padStart(2, "0");
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+};
+
+export const getVideoInfo = async (videoId: string): Promise<Payload> => {
+  const info = await youtubedl(`https://youtu.be/watch?v=${videoId}`, {
+    dumpSingleJson: true,
+    noCheckCertificates: true,
+    noWarnings: true,
+    preferFreeFormats: true,
+    addHeader: ["referer:youtube.com", "user-agent:googlebot"],
+  });
+
+  if (typeof info === "string") {
+    throw new Error("Failed to fetch video info");
+  }
+
+  return info as Payload;
 };

@@ -1,10 +1,10 @@
 # `youtube2rss`
 
-This Telegram bot allows you to turn YouTube videos into podcasts that you can listen to in your favorite podcast app. Simply send a YouTube link to the bot and it will download the video, extract the audio, and generate an RSS feed that you can host on your server.
+This Telegram bot allows you to turn YouTube videos into podcast feed that you can listen to in your favorite podcast app. Simply send a YouTube link to the bot and it will download the video, extract the audio, and generate an RSS feed that you can host on your server or use S3 storage.
 
-The bot is built using `Deno`, a secure runtime for JavaScript and TypeScript, and uses the [ytdl-core](https://www.npmjs.com/package/ytdl-core) library to download and extract the audio from the YouTube video. It also uses the [podcast](https://www.npmjs.com/package/podcast) library to generate the RSS feed.
+The bot is built using `Bun` and uses the [youtube-dl-exec](https://www.npmjs.com/package/) library to download and extract the audio from the YouTube videos. It also uses the [podcast](https://www.npmjs.com/package/podcast) library to generate the RSS feed.
 
-To use the bot, you'll need to set up a Telegram bot and get an API token. You'll also need to have `Deno` and `Node.js` installed on your machine.
+To use the bot, you'll need to set up a Telegram bot and get an API token. You'll also need to have `Bun` and `Node.js` installed.
 
 ## Installation
 
@@ -17,27 +17,27 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. You'l
 2. Install dependencies:
 
    ```sh
-   deno cache src/deps.ts --lock=deno.lock --lock-write
+   bun install
    ```
 
-3. Make sure ffmpeg installed on your machine:
+3. Create SQLite database:
 
    ```sh
-   ffmpeg -version
+   bun run prepare
    ```
 
-4. Create SQLite database:
+4. Create the `.env` or `.env.dev` file with your Telegram bot token and Server URL (**both are required**) like in the `.env.example` file.
+
+5. Start a Teleram bot (**production**):
 
    ```sh
-   deno task prepare
+   bun run start
    ```
 
-5. Start a Teleram bot with this ENV variables: `TELEGRAM_BOT_TOKEN` and `SERVER_URL`, for example:
+   or in **development** mode:
 
    ```sh
-   TELEGRAM_BOT_TOKEN=myTeLeGrAmBoTtOkEn
-   SERVER_URL=https://my-s3-bucket-public-url.com
-   deno task telegram
+   bun run start:dev
    ```
 
 ## How to use
@@ -50,36 +50,34 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. You'l
 
 4. Host the RSS feed on your server and subscribe to it in your favorite podcast app.
 
-## Deno static file server usage (optional)
+## Bun static file server usage (optional)
 
-1. Install dependencies:
+1. Start the static file server (**production**):
 
    ```sh
-   deno install --allow-net --allow-read https://deno.land/std@0.192.0/http/file_server.ts
+   bun run serve
    ```
 
-2. Start the file server:
+   or **development** mode:
 
    ```sh
-   deno task serve
+   bun run serve:dev
    ```
 
 ## S3 file storage usage (optional)
 
-1. Start a Teleram bot with this ENV variables: `TELEGRAM_BOT_TOKEN`, `SERVER_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_ENDPOINT` and `S3_SECRET_KEY`, for example:
+1. Fill env variables: `TELEGRAM_BOT_TOKEN`, `SERVER_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_ENDPOINT` and `S3_SECRET_KEY` in the `.env` or `.env.dev` file.
 
-```sh
-TELEGRAM_BOT_TOKEN=myTeLeGrAmBoTtOkEn
-SERVER_URL=https://my-s3-bucket-public-url.com
-S3_BUCKET=youtube2rss
-S3_ACCESS_KEY=s3AcCeSsKeY
-S3_ENDPOINT=bucket.s3.com
-S3_SECRET_KEY=s3SeCrEtKeY
-deno task telegram
-```
-
-If all variables are set, the bot will store `.mp3` files and generated `rss.xml` file in your S3 bucket. I'm using [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/) as S3 compatible storage. The [free plan](https://developers.cloudflare.com/r2/pricing/) is sufficient for my needs. Don't forget to manually upload `cover.jpg` to your bucket.
+If all variables are set, the bot will store `.mp3` files and generated `rss.xml` file in your S3 bucket. I'm using [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/) as S3 compatible storage. The [free plan](https://developers.cloudflare.com/r2/pricing/) is sufficient for my needs.
 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## TODO list
+
+- [x] Update README
+- [] Add pm2
+- [] Better logging
+- [] Add thumbnails podcast episodes
+- [] Parse timestamps in video description and add them to the podcast feed

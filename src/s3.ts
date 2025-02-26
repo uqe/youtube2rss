@@ -1,22 +1,15 @@
-import { S3Client } from "./deps.ts";
+import { S3Client } from "bun";
 
 const s3client = new S3Client({
-  endPoint: Deno.env.get("S3_ENDPOINT") || "undefined.com",
-  port: 443,
-  useSSL: true,
-  region: "auto",
-  bucket: Deno.env.get("S3_BUCKET"),
-  pathStyle: false,
-  accessKey: Deno.env.get("S3_ACCESS_KEY"),
-  secretKey: Deno.env.get("S3_SECRET_KEY"),
+  endpoint: Bun.env.S3_ENDPOINT || "undefined.com",
+  bucket: Bun.env.S3_BUCKET,
+  accessKeyId: Bun.env.S3_ACCESS_KEY,
+  secretAccessKey: Bun.env.S3_SECRET_KEY,
 });
 
 export const uploadFileOnS3 = async (videoId: string, filePath: string) => {
   try {
-    const file = await Deno.open(filePath, { read: true });
-    const readableStream = file.readable;
-
-    await s3client.putObject(`files/${videoId}.mp3`, readableStream);
+    await s3client.write(`files/${videoId}.mp3`, Bun.file(filePath));
   } catch (error) {
     console.error(`Error putting file on S3: ${error}`);
   }
@@ -24,15 +17,7 @@ export const uploadFileOnS3 = async (videoId: string, filePath: string) => {
 
 export const uploadXmlToS3 = async (filePath: string) => {
   try {
-    const file = await Deno.open(filePath, { read: true });
-    const readableStream = file.readable;
-
-    await s3client.putObject(`rss.xml`, readableStream, {
-      metadata: {
-        "Content-Type": "text/xml",
-        "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
-      },
-    });
+    await s3client.write(`rss.xml`, Bun.file(filePath));
   } catch (error) {
     console.error(`Error uploading XML to S3: ${error}`);
   }
@@ -40,10 +25,12 @@ export const uploadXmlToS3 = async (filePath: string) => {
 
 export const isCoverImageExistsOnS3 = async () => {
   try {
-    await s3client.getObject(`cover.jpg`);
+    const isCoverExists = await s3client.exists(`cover.jpg`);
+
+    if (!isCoverExists) {
+      await s3client.write("cover.jpg", Bun.file("./public/cover.jpg"));
+    }
   } catch (error) {
-    const file = await Deno.open("./public/cover.jpg", { read: true });
-    const readableStream = file.readable;
-    await s3client.putObject("cover.jpg", readableStream);
+    console.error(`Error checking cover image on S3: ${error}`);
   }
 };
