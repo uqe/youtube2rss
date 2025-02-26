@@ -64,9 +64,30 @@ describe("db tests", () => {
         expect(videos[index].video_id).toBe(id);
       });
     });
+
+    it("should handle null description", async () => {
+      const videoId = "nullDesc";
+      await addVideoToDb(
+        videoId,
+        "Test Video",
+        null,
+        "https://example.com/test.mp4",
+        "2022-01-01",
+        "/path/to/test.mp4",
+        456
+      );
+      const videos = getAllVideos();
+      expect(videos.length).toBe(1);
+      expect(videos[0].video_description).toBeNull();
+    });
   });
 
   describe("getAllVideos", () => {
+    it("should return empty array when no videos exist", () => {
+      const videos = getAllVideos();
+      expect(videos).toEqual([]);
+    });
+
     it("should return all videos in the database", async () => {
       const video1 = {
         video_id: "uBvlflKbn7A",
@@ -141,7 +162,6 @@ describe("db tests", () => {
 
   describe("createDb", () => {
     it("createDb should create a database file if it does not exist", async () => {
-      // Remove DB file if exists for testing
       try {
         await Bun.file(dbName()).delete();
       } catch (_) {
@@ -154,7 +174,6 @@ describe("db tests", () => {
     });
 
     it("createDb should not overwrite an existing database", async () => {
-      // Create initial DB and add a record
       await addVideoToDb(
         "dupTest",
         "Duplicate Test",
@@ -164,7 +183,6 @@ describe("db tests", () => {
         "/path/to/dup.mp4",
         123
       );
-      // Run createDb again, it should detect file exists
       await createDb();
       const videos = getAllVideos();
       expect(videos.length).toBe(1);
