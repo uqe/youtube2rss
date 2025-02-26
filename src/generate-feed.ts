@@ -19,10 +19,10 @@ const feedOptions = {
   managingEditor: "arthurn@duck.com",
   generator: "https://github.com/uqe/youtube2rss",
   webMaster: "arthurn@duck.com",
-  copyright: "2023 Arthur N",
+  copyright: "2025 Arthur N",
   language: "ru",
   categories: ["Education", "Self-Improvement"],
-  pubDate: new Date(Date.parse("2023-04-16")),
+  pubDate: new Date(Date.parse("2025-02-26")),
   ttl: 5,
   itunesAuthor: "Arthur N",
   itunesSubtitle: "YouTube personal feed",
@@ -54,7 +54,7 @@ export const generateFeed = async (allVideos: Video[]) => {
     } else {
       feed.addItem({
         title: item.video_name,
-        description: item.video_description ? item.video_description : "",
+        description: item.video_description ?? "",
         url: `${serverUrl()}/files/${item.video_id}.mp3`,
         guid: item.video_id,
         author: "Arthur N",
@@ -69,7 +69,7 @@ export const generateFeed = async (allVideos: Video[]) => {
         itunesAuthor: "Arthur N",
         itunesExplicit: false,
         itunesSubtitle: item.video_name,
-        itunesSummary: item.video_name,
+        itunesSummary: item.video_description ?? "",
         itunesDuration: item.video_length,
       });
     }
