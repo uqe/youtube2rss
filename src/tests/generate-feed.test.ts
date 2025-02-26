@@ -53,21 +53,17 @@ describe("generate-feed tests", () => {
 
   describe("generateFeed", () => {
     it("should have correct RSS channel metadata", async () => {
-      const xml = Bun.file(rssFile());
-      const byteArray = new TextDecoder().decode(await xml.bytes());
-      const doc = parse(byteArray) as unknown as RSSDoc;
+      const xmlContent = await Bun.file(rssFile()).text();
+      const doc = parse(xmlContent) as unknown as RSSDoc;
 
       expect(doc.rss.channel.description).toBe("YouTube personal feed");
       expect(doc.rss.channel.link).toBe("https://github.com/uqe/youtube2rss");
       expect(doc.rss.channel.generator).toBe("https://github.com/uqe/youtube2rss");
       expect(doc.rss.channel.title).toBe("YouTube");
     });
-  });
 
-  describe("generateFeed", () => {
     it("should generate correct RSS items for each video", async () => {
-      const xml = Bun.file(rssFile());
-      const byteArray = new TextDecoder().decode(await xml.bytes());
+      const xmlContent = await Bun.file(rssFile()).text();
 
       mockVideos.forEach((video) => {
         const title = `<title><![CDATA[${video.video_name}]]></title>`;
@@ -83,8 +79,50 @@ describe("generate-feed tests", () => {
         const duration = `<itunes:duration>${formatSeconds(video.video_length)}</itunes:duration>`;
         const item = `<item>${title}${description}${link}${guid}${creator}${date}${author}${subtitle}${summary}${explicit}${duration}</item>`;
 
-        expect(byteArray.includes(item)).toBe(true);
+        expect(xmlContent.includes(item)).toBe(true);
       });
+    });
+
+    it("should correctly handle special characters in titles", async () => {
+      const specialCharsVideo: Video = {
+        video_id: "SpecialChars",
+        video_name: 'Test & special <characters> in "title"',
+        video_description: "Description with & < > \" ' characters",
+        video_url: "https://example.com",
+        video_added_date: "2022-01-04",
+        video_path: "/src/tests/data/daw9YO3nAJI.mp4",
+        video_length: 200,
+      };
+
+      await generateFeed([specialCharsVideo]);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+
+      expect(xmlContent).toContain(`<title><![CDATA[${specialCharsVideo.video_name}]]></title>`);
+      expect(xmlContent).toContain(`<description><![CDATA[${specialCharsVideo.video_description}]]></description>`);
+    });
+
+    it("should handle non-existent files in test mode", async () => {
+      const nonExistentVideo: Video = {
+        video_id: "NonExistVideo",
+        video_name: "Non-existent video",
+        video_description: "This video does not exist",
+        video_url: "https://example.com",
+        video_added_date: "2022-01-03",
+        video_path: "/path/to/nonexistent/file.mp3",
+        video_length: 100,
+      };
+
+      await generateFeed([nonExistentVideo]);
+
+      const fileExists = await Bun.file(rssFile()).exists();
+
+      expect(fileExists).toBe(true);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+
+      expect(xmlContent).toContain(nonExistentVideo.video_id);
+      expect(xmlContent).toContain(nonExistentVideo.video_name);
     });
   });
 });
