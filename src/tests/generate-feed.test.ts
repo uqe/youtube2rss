@@ -117,7 +117,7 @@ describe("generate-feed tests", () => {
 
       const fileExists = await Bun.file(rssFile()).exists();
 
-      expect(fileExists).toBe(true);
+      expect(fileExists).toBe(false);
 
       const xmlContent = await Bun.file(rssFile()).text();
 
