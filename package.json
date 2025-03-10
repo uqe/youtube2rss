@@ -12,11 +12,11 @@
     "tests": "IS_TEST=true bun test"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "^1.2.4",
     "@libs/xml": "npm:@jsr/libs__xml"
   },
   "peerDependencies": {
-    "typescript": "^5.7.3"
+    "typescript": "^5.8.2"
   },
   "dependencies": {
     "adze": "^2.2.1",
