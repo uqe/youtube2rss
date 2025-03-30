@@ -12,7 +12,7 @@
     "tests": "IS_TEST=true bun test"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.5",
+    "@types/bun": "^1.2.8",
     "@libs/xml": "npm:@jsr/libs__xml"
   },
   "peerDependencies": {
@@ -22,7 +22,7 @@
     "adze": "^2.2.1",
     "grammy": "^1.35.1",
     "podcast": "^2.0.1",
-    "youtube-dl-exec": "^3.0.19"
+    "youtube-dl-exec": "^3.0.20"
   },
   "trustedDependencies": [
     "es5-ext",
