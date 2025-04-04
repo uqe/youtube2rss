@@ -4,14 +4,14 @@
     "": {
       "name": "youtube2rss",
       "dependencies": {
-        "adze": "^2.2.1",
+        "adze": "^2.2.2",
         "grammy": "^1.35.1",
         "podcast": "^2.0.1",
-        "youtube-dl-exec": "^3.0.19",
+        "youtube-dl-exec": "^3.0.20",
       },
       "devDependencies": {
         "@libs/xml": "npm:@jsr/libs__xml",
-        "@types/bun": "^1.2.5",
+        "@types/bun": "^1.2.8",
       },
       "peerDependencies": {
         "typescript": "^5.8.2",
@@ -41,7 +41,7 @@
 
     "abort-controller": ["abort-controller@3.0.0", "", { "dependencies": { "event-target-shim": "^5.0.0" } }, "sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg=="],
 
-    "adze": ["adze@2.2.1", "", { "dependencies": { "@ungap/structured-clone": "1.2.0", "date-fns": "^3.6.0", "picocolors": "1.1.1" } }, "sha512-zTQPl28v/WNEZo4Pmb3HThpYLLTeMuHX3fvC8Aw1CIAHT7nZR5JiqbmE/mB+3qemX4n0ygj+3KfcFpKxLINa/A=="],
+    "adze": ["adze@2.2.2", "", { "dependencies": { "@ungap/structured-clone": "1.2.0", "date-fns": "^3.6.0", "picocolors": "1.1.1" } }, "sha512-lgzQQFsemu7GHgULfnC+nu0pS7aF9i9d3o4s87+oeCG8EuusHeqPUfjKZ74IAlOwg+EJElejYTsfuyGkLSL33w=="],
 
     "binary-version": ["binary-version@7.1.0", "", { "dependencies": { "execa": "^8.0.1", "find-versions": "^6.0.0" } }, "sha512-Iy//vPc3ANPNlIWd242Npqc8MK0a/i4kVcHDlDA6HNMv5zMxz4ulIFhOSYJVKw/8AbHdHy0CnGYEt1QqSXxPsw=="],
 
