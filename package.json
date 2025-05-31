@@ -22,7 +22,7 @@
     "adze": "^2.2.3",
     "grammy": "^1.36.1",
     "podcast": "^2.0.1",
-    "youtube-dl-exec": "^3.0.20"
+    "youtube-dl-exec": "^3.0.21"
   },
   "trustedDependencies": [
     "es5-ext",

@@ -4,17 +4,17 @@
     "": {
       "name": "youtube2rss",
       "dependencies": {
-        "adze": "latest",
-        "grammy": "latest",
-        "podcast": "latest",
-        "youtube-dl-exec": "latest",
+        "adze": "^2.2.3",
+        "grammy": "^1.36.1",
+        "podcast": "^2.0.1",
+        "youtube-dl-exec": "^3.0.21",
       },
       "devDependencies": {
         "@libs/xml": "npm:@jsr/libs__xml",
-        "@types/bun": "latest",
+        "@types/bun": "^1.2.10",
       },
       "peerDependencies": {
-        "typescript": "latest",
+        "typescript": "^5.8.3",
       },
     },
   },
@@ -171,7 +171,7 @@
 
     "xml": ["xml@1.0.1", "", {}, "sha512-huCv9IH9Tcf95zuYCsQraZtWnJvBtLVE0QHMOs8bWyZAFZNDcYjsPq1nEx8jKA9y+Beo9v+7OBPRisQTjinQMw=="],
 
-    "youtube-dl-exec": ["youtube-dl-exec@3.0.20", "", { "dependencies": { "binary-version-check": "~6.1.0", "dargs": "~7.0.0", "debug-logfmt": "~1.2.2", "is-unix": "~2.0.10", "tinyspawn": "~1.5.0" } }, "sha512-FRPwz5jX3LVuRno5NAnqxm74DbzgOMp31+PvMsR5tQUiu7sRaX6sKzHlNK8op5U1eVd80DYhKNMWJbTm4D4YKA=="],
+    "youtube-dl-exec": ["youtube-dl-exec@3.0.21", "", { "dependencies": { "binary-version-check": "~6.1.0", "dargs": "~7.0.0", "debug-logfmt": "~1.2.2", "is-unix": "~2.0.10", "tinyspawn": "~1.5.0" } }, "sha512-z3WS7WAzzKt64N0d6NkwRe8wVwzd5ve5nXo5jg+mfRmp0FUV8p5I4IymkWI1LYRNcOcexlKcdTZSOB+yVJMMzw=="],
 
     "npm-run-path/path-key": ["path-key@4.0.0", "", {}, "sha512-haREypq7xkM7ErfgIyA0z+Bj4AGKlMSdlQE2jvJo6huWD1EdkKYV+G/T4nq0YEF2vgTT8kqMFKo1uHn950r4SQ=="],
   }
