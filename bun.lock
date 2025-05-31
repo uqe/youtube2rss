@@ -5,7 +5,7 @@
       "name": "youtube2rss",
       "dependencies": {
         "adze": "^2.2.3",
-        "grammy": "^1.36.1",
+        "grammy": "^1.36.3",
         "podcast": "^2.0.1",
         "youtube-dl-exec": "^3.0.21",
       },
@@ -87,7 +87,7 @@
 
     "get-stream": ["get-stream@8.0.1", "", {}, "sha512-VaUJspBffn/LMCJVoMvSAdmscJyS1auj5Zulnn5UoYcY531UWmdwhRWkcGKnGU93m5HSXP9LP2usOryrBtQowA=="],
 
-    "grammy": ["grammy@1.36.1", "", { "dependencies": { "@grammyjs/types": "3.20.0", "abort-controller": "^3.0.0", "debug": "^4.3.4", "node-fetch": "^2.7.0" } }, "sha512-NZxRWwdUPuVfjBVuycxgVx9TlGd0WYC1IRb5+/yrWeBpWkOVcEcbt3fQcn1oUiT8dcUDj9jqPIdnRltrYkXBew=="],
+    "grammy": ["grammy@1.36.3", "", { "dependencies": { "@grammyjs/types": "3.20.0", "abort-controller": "^3.0.0", "debug": "^4.3.4", "node-fetch": "^2.7.0" } }, "sha512-OmoYn0WTETbMR7FbEy6QWx0Dvm3Md1O84UOgZLmj19mYlKbhefu2fSHDjoflxDNu8QgIrseQRsFSk4zRRcvJOA=="],
 
     "human-signals": ["human-signals@5.0.0", "", {}, "sha512-AXcZb6vzzrFAUE61HnN4mpLqd/cSIwNQjtNWR0euPm6y0iqx3G4gOXaIDdtdDwZmhwe82LA6+zinmW4UBWVePQ=="],
 
