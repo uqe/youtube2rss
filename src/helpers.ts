@@ -29,6 +29,7 @@ export const getVideoInfo = async (videoId: string): Promise<Payload> => {
     noCheckCertificates: true,
     noWarnings: true,
     preferFreeFormats: true,
+    cookies: "./cookies.txt",
     addHeader: ["referer:youtube.com", "user-agent:googlebot"],
   });
 

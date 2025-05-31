@@ -28,6 +28,7 @@ export const download = async (videoId: string, handler?: (text: string) => Prom
           output: outputFilePath,
           preferFreeFormats: true,
           writeInfoJson: false,
+          cookies: "./cookies.txt",
           quiet: false,
           embedThumbnail: true,
           // addHeader: ["referer:youtube.com", "user-agent:googlebot"],
