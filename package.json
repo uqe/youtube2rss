@@ -12,7 +12,7 @@
     "tests": "IS_TEST=true bun test"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.15",
+    "@types/bun": "^1.2.18",
     "@libs/xml": "npm:@jsr/libs__xml"
   },
   "peerDependencies": {
