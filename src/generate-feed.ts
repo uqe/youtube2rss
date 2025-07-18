@@ -1,7 +1,7 @@
 import { Podcast } from "podcast";
 import { isS3Configured } from "./helpers.ts";
 import { isCoverImageExistsOnS3, uploadXmlToS3 } from "./s3.ts";
-import { type Video } from "./types.ts";
+import type { Video } from "./types.ts";
 
 export const serverUrl = () => (Bun.env.IS_TEST ? "https://test.com" : Bun.env.SERVER_URL);
 

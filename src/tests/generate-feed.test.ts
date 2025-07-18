@@ -1,8 +1,8 @@
-import { parse } from "@libs/xml";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { parse } from "@libs/xml";
 import { generateFeed, rssFile, serverUrl } from "../generate-feed.ts";
-import { type Video } from "../types.ts";
 import { formatSeconds } from "./../helpers";
+import type { Video } from "../types.ts";
 
 interface RSSDoc {
   rss: {
@@ -70,12 +70,12 @@ describe("generate-feed tests", () => {
         const description = `<description><![CDATA[${video.video_description || ""}]]></description>`;
         const link = `<link>${serverUrl()}/files/${video.video_id}.mp3</link>`;
         const guid = `<guid isPermaLink="false">${video.video_id}</guid>`;
-        const creator = `<dc:creator><![CDATA[Arthur N]]></dc:creator>`;
+        const creator = "<dc:creator><![CDATA[Arthur N]]></dc:creator>";
         const date = `<pubDate>${new Date(video.video_added_date).toUTCString()}</pubDate>`;
-        const author = `<itunes:author>Arthur N</itunes:author>`;
+        const author = "<itunes:author>Arthur N</itunes:author>";
         const subtitle = `<itunes:subtitle>${video.video_name}</itunes:subtitle>`;
         const summary = `<itunes:summary>${video.video_description?.replaceAll("'", "&apos;")}</itunes:summary>`;
-        const explicit = `<itunes:explicit>false</itunes:explicit>`;
+        const explicit = "<itunes:explicit>false</itunes:explicit>";
         const duration = `<itunes:duration>${formatSeconds(video.video_length)}</itunes:duration>`;
         const item = `<item>${title}${description}${link}${guid}${creator}${date}${author}${subtitle}${summary}${explicit}${duration}</item>`;
 

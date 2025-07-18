@@ -7,13 +7,9 @@ if (!Bun.env.SERVER_URL) {
 }
 
 const buildRss = async () => {
-  try {
-    console.log("Building RSS feed...");
-    await generateFeed(getAllVideos());
-    console.log("RSS feed built.");
-  } catch (error) {
-    throw error;
-  }
+  console.log("Building RSS feed...");
+  await generateFeed(getAllVideos());
+  console.log("RSS feed built.");
 };
 
 buildRss();

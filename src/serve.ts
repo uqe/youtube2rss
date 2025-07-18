@@ -1,7 +1,7 @@
-import { join, normalize, resolve } from "path";
+import { join, normalize, resolve } from "node:path";
 
 const BASE_PATH = resolve("./public");
-const PORT = parseInt(process.env.PORT || "3000");
+const PORT = Number.parseInt(process.env.PORT || "3000");
 const LOG_LEVEL = process.env.LOG_LEVEL || "info"; // "debug", "info", "error"
 
 const mimeTypes: { [key: string]: string } = {
@@ -16,9 +16,11 @@ const mimeTypes: { [key: string]: string } = {
 const getOptimalCacheControl = (contentType: string): string => {
   if (contentType === "audio/mpeg") {
     return "public, max-age=2592000"; // 30 days for audio files
-  } else if (contentType === "application/xml") {
+  }
+  if (contentType === "application/xml") {
     return "public, max-age=900"; // 15 minutes for XML (feed files)
-  } else if (contentType.startsWith("image/")) {
+  }
+  if (contentType.startsWith("image/")) {
     return "public, max-age=604800"; // 7 days for images
   }
   return "public, max-age=3600"; // 1 hour for other content
@@ -28,10 +30,10 @@ const parseRangeHeader = (rangeHeader: string, fileSize: number): [number, numbe
   const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
   if (!match) return null;
 
-  const start = parseInt(match[1], 10);
-  const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+  const start = Number.parseInt(match[1], 10);
+  const end = match[2] ? Number.parseInt(match[2], 10) : fileSize - 1;
 
-  if (isNaN(start) || isNaN(end) || start >= fileSize || end >= fileSize || start > end) {
+  if (Number.isNaN(start) || Number.isNaN(end) || start >= fileSize || end >= fileSize || start > end) {
     return null;
   }
 
@@ -40,7 +42,7 @@ const parseRangeHeader = (rangeHeader: string, fileSize: number): [number, numbe
 
 export const serverHandler = async (req: Request) => {
   const url = new URL(req.url);
-  let pathname = url.pathname === "/" ? "/index.html" : url.pathname;
+  const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
 
   // Security: Prevent path traversal attacks
   const safePath = normalize(pathname).replace(/^(\.\.(\/|\\|$))+/, "");

@@ -5,7 +5,7 @@ export const getYoutubeVideoId = (message: string) => {
     /^https?:\/\/(?:(?:youtu\.be\/)|(?:(?:www\.)?youtube\.com\/(?:(?:watch\?(?:[^&]+&)?vi?=)|(?:vi?\/)|(?:shorts\/))))([a-zA-Z0-9_-]{11,})/gim;
 
   const res = regex.exec(message);
-  return res && res[1];
+  return res?.[1];
 };
 
 export const isS3Configured = () => {

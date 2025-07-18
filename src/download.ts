@@ -11,7 +11,7 @@ export const download = async (videoId: string, handler?: (text: string) => Prom
   try {
     if (isVideoExists(videoId)) {
       console.log("Video already exists");
-      handler && handler("Video already exists. Find it in the RSS feed.");
+      handler?.("Video already exists. Find it in the RSS feed.");
       return;
     }
 
@@ -58,9 +58,9 @@ export const download = async (videoId: string, handler?: (text: string) => Prom
     console.log("Start regenerating RSS feed");
     generateFeed(getAllVideos());
     console.log("Feed regenerated successfully");
-    handler && handler("RSS feed was successfully updated.");
+    handler?.("RSS feed was successfully updated.");
   } catch (error) {
-    handler && handler("Something went wrong. Please try again later...");
+    handler?.("Something went wrong. Please try again later...");
     console.error(error);
   }
 };

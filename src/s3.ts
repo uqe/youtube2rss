@@ -17,7 +17,7 @@ export const uploadFileOnS3 = async (videoId: string, filePath: string) => {
 
 export const uploadXmlToS3 = async (filePath: string) => {
   try {
-    await s3client.write(`rss.xml`, Bun.file(filePath));
+    await s3client.write("rss.xml", Bun.file(filePath));
   } catch (error) {
     console.error(`Error uploading XML to S3: ${error}`);
   }
@@ -25,7 +25,7 @@ export const uploadXmlToS3 = async (filePath: string) => {
 
 export const isCoverImageExistsOnS3 = async () => {
   try {
-    const isCoverExists = await s3client.exists(`cover.jpg`);
+    const isCoverExists = await s3client.exists("cover.jpg");
 
     if (!isCoverExists) {
       await s3client.write("cover.jpg", Bun.file("./public/cover.jpg"));
