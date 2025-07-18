@@ -5,7 +5,7 @@ export const getYoutubeVideoId = (message: string) => {
     /^https?:\/\/(?:(?:youtu\.be\/)|(?:(?:www\.)?youtube\.com\/(?:(?:watch\?(?:[^&]+&)?vi?=)|(?:vi?\/)|(?:shorts\/))))([a-zA-Z0-9_-]{11,})/gim;
 
   const res = regex.exec(message);
-  return res?.[1];
+  return res?.[1] || null;
 };
 
 export const isS3Configured = () => {
@@ -13,7 +13,7 @@ export const isS3Configured = () => {
 };
 
 export const getFilePath = (videoId: string, format: "mp3" | "mp4") =>
-  Bun.env.IS_TEST ? `./src/tests/data/${videoId}.${format}` : `./public/files/${videoId}.${format}`;
+  Bun.env.IS_TEST === "true" ? `./src/tests/data/${videoId}.${format}` : `./public/files/${videoId}.${format}`;
 
 export const formatSeconds = (seconds: number) => {
   const hrs = Math.floor(seconds / 3600);

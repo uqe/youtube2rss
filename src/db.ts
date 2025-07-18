@@ -1,10 +1,10 @@
 import { Database } from "bun:sqlite";
 
-export const dbName = () => (Bun.env.IS_TEST ? "youtube2rss.test.db" : "youtube2rss.db");
+export const dbName = () => (Bun.env.IS_TEST === "true" ? "youtube2rss.test.db" : "youtube2rss.db");
 
 export const createDb = async () => {
   const dbFile = Bun.file(dbName());
-  if ((await dbFile.exists()) && !Bun.env.IS_TEST) {
+  if ((await dbFile.exists()) && Bun.env.IS_TEST !== "true") {
     console.log("Database already exists");
     return;
   }
@@ -25,7 +25,7 @@ export const createDb = async () => {
 
   db.close();
 
-  if (!Bun.env.IS_TEST) {
+  if (Bun.env.IS_TEST !== "true") {
     console.log("Database created!");
   }
 };
