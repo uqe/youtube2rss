@@ -5,7 +5,7 @@
       "name": "youtube2rss",
       "dependencies": {
         "adze": "^2.2.5",
-        "grammy": "^1.37.0",
+        "grammy": "^1.38.2",
         "podcast": "^2.0.1",
         "youtube-dl-exec": "^3.0.22",
       },
@@ -42,7 +42,7 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.1.2", "", { "os": "win32", "cpu": "x64" }, "sha512-9zajnk59PMpjBkty3bK2IrjUsUHvqe9HWwyAWQBjGLE7MIBjbX2vwv1XPEhmO2RRuGoTkVx3WCanHrjAytICLA=="],
 
-    "@grammyjs/types": ["@grammyjs/types@3.21.0", "", {}, "sha512-IMj0EpmglPCICuyfGRx4ENKPSuzS2xMSoPgSPzHC6FtnWKDEmJLBP/GbPv/h3TAeb27txqxm/BUld+gbJk6ccQ=="],
+    "@grammyjs/types": ["@grammyjs/types@3.22.1", "", {}, "sha512-QJX0Y8lpjE+/nuTKGmxybKmvdrLHV7gqbhI/UXoWlJLWtowbwk+oW+ngfHKwegD+ewL2SX8+tQo/1E14Ma0qlw=="],
 
     "@jclem/logfmt2": ["@jclem/logfmt2@2.4.3", "", {}, "sha512-d7zluLlx+JRtVICF0+ghcrVdXBdE3eXrpIuFdcCcWxA3ABOyemkTySG4ha2AdsWFwAnh8tkB1vtyeZsWAbLumg=="],
 
@@ -108,7 +108,7 @@
 
     "get-stream": ["get-stream@8.0.1", "", {}, "sha512-VaUJspBffn/LMCJVoMvSAdmscJyS1auj5Zulnn5UoYcY531UWmdwhRWkcGKnGU93m5HSXP9LP2usOryrBtQowA=="],
 
-    "grammy": ["grammy@1.37.0", "", { "dependencies": { "@grammyjs/types": "3.21.0", "abort-controller": "^3.0.0", "debug": "^4.3.4", "node-fetch": "^2.7.0" } }, "sha512-UBGqGKux+49t1vm7n/m1BaeXIYbWESXjhaFxG+9z33VTLSHdQJwIOmpNKmZSaoBlSWbAJE+IJZ30X7RfWvEolA=="],
+    "grammy": ["grammy@1.38.2", "", { "dependencies": { "@grammyjs/types": "3.22.1", "abort-controller": "^3.0.0", "debug": "^4.3.4", "node-fetch": "^2.7.0" } }, "sha512-11O8rA3kt54Avk6cIyqdXFphkq1fbFz9Vh8hbbj8vid0VqJbZ4Yz2fpqDeaDONxnX3h9NdE/JGMk7VHVtmwKuQ=="],
 
     "human-signals": ["human-signals@5.0.0", "", {}, "sha512-AXcZb6vzzrFAUE61HnN4mpLqd/cSIwNQjtNWR0euPm6y0iqx3G4gOXaIDdtdDwZmhwe82LA6+zinmW4UBWVePQ=="],
 
