@@ -18,7 +18,7 @@
     "check:fix": "bun biome check --write"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.1.2",
+    "@biomejs/biome": "^2.3.10",
     "@libs/xml": "npm:@jsr/libs__xml",
     "@types/bun": "^1.2.18"
   },
