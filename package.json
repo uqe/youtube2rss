@@ -20,7 +20,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.1.2",
     "@libs/xml": "npm:@jsr/libs__xml",
-    "@types/bun": "^1.2.18"
+    "@types/bun": "^1.3.6"
   },
   "peerDependencies": {
     "typescript": "^5.8.3"
