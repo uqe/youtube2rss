@@ -51,5 +51,8 @@ const parseNumberList = (value?: string | null): number[] => {
 
 export const getTelegramWhitelist = () => {
   const envWhitelist = parseNumberList(Bun.env.TELEGRAM_WHITELIST);
-  return envWhitelist.length > 0 ? envWhitelist : [169125];
+  if (envWhitelist.length === 0) {
+    throw new Error("TELEGRAM_WHITELIST environment variable must be set with at least one valid Telegram user ID");
+  }
+  return envWhitelist;
 };

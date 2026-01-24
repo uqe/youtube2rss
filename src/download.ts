@@ -9,25 +9,23 @@ import { getStorage } from "./storage.ts";
 import type { Video } from "./types.ts";
 
 const downloadAudio = async (videoId: string, outputFilePath: string) => {
-  await youtubedl
-    .exec(
-      `https://youtu.be/watch?v=${videoId}`,
-      {
-        extractAudio: true,
-        audioFormat: "mp3",
-        noCheckCertificates: true,
-        noWarnings: true,
-        output: outputFilePath,
-        preferFreeFormats: true,
-        writeInfoJson: false,
-        cookies: "./cookies.txt",
-        quiet: false,
-        embedThumbnail: true,
-        // addHeader: ["referer:youtube.com", "user-agent:googlebot"],
-      },
-      { timeout: 100000, killSignal: "SIGKILL" }
-    )
-    .catch((err) => err);
+  await youtubedl.exec(
+    `https://youtu.be/watch?v=${videoId}`,
+    {
+      extractAudio: true,
+      audioFormat: "mp3",
+      noCheckCertificates: true,
+      noWarnings: true,
+      output: outputFilePath,
+      preferFreeFormats: true,
+      writeInfoJson: false,
+      cookies: "./cookies.txt",
+      quiet: false,
+      embedThumbnail: true,
+      // addHeader: ["referer:youtube.com", "user-agent:googlebot"],
+    },
+    { timeout: 100000, killSignal: "SIGKILL" }
+  );
 };
 
 const saveVideoInfo = async (info: Payload, outputFilePath: string) => {
@@ -63,6 +61,17 @@ export const download = async (videoId: string, handler?: (text: string) => Prom
     await downloadAudio(videoId, outputFilePath);
 
     logger.success("Downloaded successfully");
+
+    // Verify the downloaded file exists and is not empty
+    const downloadedFile = Bun.file(outputFilePath);
+    const fileExists = await downloadedFile.exists();
+    const fileSize = fileExists ? downloadedFile.size : 0;
+
+    if (!fileExists || fileSize === 0) {
+      const errorMsg = `Downloaded file is ${!fileExists ? "missing" : "empty"}: ${outputFilePath} for video ${videoId}`;
+      logger.error(errorMsg);
+      throw new Error(errorMsg);
+    }
 
     const info: Payload = await getVideoInfo(videoId);
 

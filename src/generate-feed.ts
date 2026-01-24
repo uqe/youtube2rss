@@ -78,7 +78,7 @@ export const generateFeed = async (allVideos: Video[]) => {
     });
   }
 
-  Bun.write(rssFile(), xml(feed));
+  await Bun.write(rssFile(), xml(feed));
 
   if (!isTestEnv()) {
     await storage.uploadRss(rssFile());
