@@ -1,36 +1,62 @@
 import { S3Client } from "bun";
+import { getS3Config, isS3Configured } from "./config.ts";
+import { logger } from "./logger.ts";
+import type { Storage } from "./storage.ts";
 
-const s3client = new S3Client({
-  endpoint: Bun.env.S3_ENDPOINT || "undefined.com",
-  bucket: Bun.env.S3_BUCKET,
-  accessKeyId: Bun.env.S3_ACCESS_KEY,
-  secretAccessKey: Bun.env.S3_SECRET_KEY,
-});
+const createS3Client = () => {
+  const s3Config = getS3Config();
 
-export const uploadFileOnS3 = async (videoId: string, filePath: string) => {
-  try {
-    await s3client.write(`files/${videoId}.mp3`, Bun.file(filePath));
-  } catch (error) {
-    console.error(`Error putting file on S3: ${error}`);
-  }
+  return new S3Client({
+    endpoint: s3Config.endpoint,
+    bucket: s3Config.bucket,
+    accessKeyId: s3Config.accessKey,
+    secretAccessKey: s3Config.secretKey,
+  });
 };
 
-export const uploadXmlToS3 = async (filePath: string) => {
-  try {
-    await s3client.write("rss.xml", Bun.file(filePath));
-  } catch (error) {
-    console.error(`Error uploading XML to S3: ${error}`);
+export const createS3Storage = (): Storage => {
+  if (!isS3Configured()) {
+    throw new Error(
+      "S3 is not properly configured. Please set all required environment variables: S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY"
+    );
   }
-};
 
-export const isCoverImageExistsOnS3 = async () => {
-  try {
-    const isCoverExists = await s3client.exists("cover.jpg");
+  const s3client = createS3Client();
 
-    if (!isCoverExists) {
-      await s3client.write("cover.jpg", Bun.file("./public/cover.jpg"));
+  const uploadAudio = async (videoId: string, filePath: string): Promise<void> => {
+    try {
+      await s3client.write(`files/${videoId}.mp3`, Bun.file(filePath));
+    } catch (error) {
+      logger.error(`Error putting file on S3 for video ${videoId}: ${error}`);
+      throw error;
     }
-  } catch (error) {
-    console.error(`Error checking cover image on S3: ${error}`);
-  }
+  };
+
+  const uploadRss = async (filePath: string): Promise<void> => {
+    try {
+      await s3client.write("rss.xml", Bun.file(filePath));
+    } catch (error) {
+      logger.error(`Error uploading RSS XML to S3 from ${filePath}: ${error}`);
+      throw error;
+    }
+  };
+
+  const ensureCoverImage = async (): Promise<void> => {
+    try {
+      const isCoverExists = await s3client.exists("cover.jpg");
+
+      if (!isCoverExists) {
+        await s3client.write("cover.jpg", Bun.file("./public/cover.jpg"));
+      }
+    } catch (error) {
+      logger.error(`Error ensuring cover image on S3: ${error}`);
+      throw error;
+    }
+  };
+
+  return {
+    uploadAudio,
+    uploadRss,
+    ensureCoverImage,
+  };
 };

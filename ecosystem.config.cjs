@@ -1,0 +1,61 @@
+module.exports = {
+  apps: [
+    {
+      name: "youtube2rss",
+      script: "src/index.ts",
+      interpreter: "bun",
+      instances: 1,
+      exec_mode: "fork",
+      watch: true,
+      ignore_watch: ["node_modules", "logs", "youtube2rss.db"],
+      env: {
+        NODE_ENV: "production",
+        PORT: 3000,
+      },
+      env_development: {
+        NODE_ENV: "development",
+        PORT: 3000,
+      },
+      error_file: "./logs/err.log",
+      out_file: "./logs/out.log",
+      log_file: "./logs/combined.log",
+      time: true,
+      restart_delay: 1000,
+      max_restarts: 10,
+      min_uptime: "10s",
+      max_memory_restart: "1G",
+      cron_restart: "0 0 * * *", // Перезапуск каждый день в полночь
+      kill_timeout: 5000,
+    },
+    {
+      name: "youtube2rss-server",
+      script: "src/serve.ts",
+      interpreter: "bun",
+      instances: 1,
+      exec_mode: "fork",
+      watch: true,
+      ignore_watch: ["node_modules", "logs", "youtube2rss.db"],
+      env: {
+        NODE_ENV: "production",
+        PORT: 3001,
+      },
+      env_development: {
+        NODE_ENV: "development",
+        PORT: 3001,
+      },
+      env_production: {
+        NODE_ENV: "production",
+        PORT: 3001,
+      },
+      error_file: "./logs/server-err.log",
+      out_file: "./logs/server-out.log",
+      log_file: "./logs/server-combined.log",
+      time: true,
+      restart_delay: 1000,
+      max_restarts: 10,
+      min_uptime: "10s",
+      max_memory_restart: "1G",
+      kill_timeout: 5000,
+    },
+  ],
+};

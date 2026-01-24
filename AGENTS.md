@@ -17,6 +17,17 @@
 - **Форматирование:** `bun run format` (проверка) или `bun run format:fix` (исправление)
 - **Комплексная проверка:** `bun run check` (проверка) или `bun run check:fix` (исправление)
 
+### PM2 команды
+
+- **Запуск:** `bun run pm2:start` (prod) или `bun run pm2:start:dev` (dev)
+- **Остановка:** `bun run pm2:stop`
+- **Перезапуск:** `bun run pm2:restart`
+- **Плавный перезапуск:** `bun run pm2:reload`
+- **Удаление процессов:** `bun run pm2:delete`
+- **Логи:** `bun run pm2:logs` (основной) или `bun run pm2:logs:server` (сервер)
+- **Статус:** `bun run pm2:status`
+- **Мониторинг:** `bun run pm2:monit`
+
 ## Стиль кода
 
 - **Среда выполнения:** Bun с TypeScript ESNext модулями
