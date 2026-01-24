@@ -37,3 +37,19 @@ export const getRequiredBotToken = () => requireEnv("TELEGRAM_BOT_TOKEN");
 export const getPort = () => Number.parseInt(Bun.env.PORT ?? "3000", 10);
 
 export const getLogLevel = () => Bun.env.LOG_LEVEL ?? "info";
+
+const parseNumberList = (value?: string | null): number[] => {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((item) => Number.parseInt(item.trim(), 10))
+    .filter((item) => !Number.isNaN(item));
+};
+
+export const getTelegramWhitelist = () => {
+  const envWhitelist = parseNumberList(Bun.env.TELEGRAM_WHITELIST);
+  return envWhitelist.length > 0 ? envWhitelist : [169125];
+};

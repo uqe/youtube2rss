@@ -26,7 +26,7 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. You'l
    bun run prepare
    ```
 
-4. Create the `.env` or `.env.dev` file with your Telegram bot token and Server URL (**both are required**) like in the `.env.example` file.
+4. Create the `.env` or `.env.dev` file with your Telegram bot token and Server URL (**both are required**) like in the `.env.example` file. Optionally set `TELEGRAM_WHITELIST` (comma-separated Telegram user IDs).
 
 5. Start a Teleram bot (**production**):
 
@@ -66,7 +66,7 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. You'l
 
 ## S3 file storage usage (optional)
 
-1. Fill env variables: `TELEGRAM_BOT_TOKEN`, `SERVER_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_ENDPOINT` and `S3_SECRET_KEY` in the `.env` or `.env.dev` file.
+1. Fill env variables: `TELEGRAM_WHITELIST`, `TELEGRAM_BOT_TOKEN`, `SERVER_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_ENDPOINT` and `S3_SECRET_KEY` in the `.env` or `.env.dev` file.
 
 If all variables are set, the bot will store `.mp3` files and generated `rss.xml` file in your S3 bucket. I'm using [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/) as S3 compatible storage. The [free plan](https://developers.cloudflare.com/r2/pricing/) is sufficient for my needs.
 

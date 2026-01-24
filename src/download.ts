@@ -25,7 +25,7 @@ const downloadAudio = async (videoId: string, outputFilePath: string) => {
         embedThumbnail: true,
         // addHeader: ["referer:youtube.com", "user-agent:googlebot"],
       },
-      { timeout: 100000, killSignal: "SIGKILL" },
+      { timeout: 100000, killSignal: "SIGKILL" }
     )
     .catch((err) => err);
 };
