@@ -1,4 +1,5 @@
 import youtubedl, { type Payload } from "youtube-dl-exec";
+import { getFilesDir, isS3Configured as isS3ConfiguredConfig } from "./config.ts";
 
 export const getYoutubeVideoId = (message: string) => {
   const regex =
@@ -8,12 +9,9 @@ export const getYoutubeVideoId = (message: string) => {
   return res?.[1] || null;
 };
 
-export const isS3Configured = () => {
-  return Boolean(Bun.env.S3_ENDPOINT && Bun.env.S3_BUCKET && Bun.env.S3_ACCESS_KEY && Bun.env.S3_SECRET_KEY);
-};
+export const isS3Configured = () => isS3ConfiguredConfig();
 
-export const getFilePath = (videoId: string, format: "mp3" | "mp4") =>
-  Bun.env.IS_TEST === "true" ? `./src/tests/data/${videoId}.${format}` : `./public/files/${videoId}.${format}`;
+export const getFilePath = (videoId: string, format: "mp3" | "mp4") => `${getFilesDir()}/${videoId}.${format}`;
 
 export const formatSeconds = (seconds: number) => {
   const hrs = Math.floor(seconds / 3600);

@@ -2,6 +2,7 @@
 import adze, { setup } from "adze";
 
 setup({
+  timestampFormatter: (date) => new Date(date).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" }),
   levels: {
     error: {
       levelName: "error",

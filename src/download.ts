@@ -1,66 +1,84 @@
 import type { Message } from "grammy/types";
 import youtubedl, { type Payload } from "youtube-dl-exec";
-import { addVideoToDb, getAllVideos, isVideoExists } from "./db.ts";
+import { isTestEnv } from "./config.ts";
+import { videoRepository } from "./db.ts";
 import { generateFeed } from "./generate-feed.ts";
-import { getVideoInfo, isS3Configured } from "./helpers.ts";
-import { uploadFileOnS3 } from "./s3.ts";
+import { getFilePath, getVideoInfo } from "./helpers.ts";
+import { logger } from "./logger.ts";
+import { getStorage } from "./storage.ts";
+import type { Video } from "./types.ts";
+
+const downloadAudio = async (videoId: string, outputFilePath: string) => {
+  await youtubedl
+    .exec(
+      `https://youtu.be/watch?v=${videoId}`,
+      {
+        extractAudio: true,
+        audioFormat: "mp3",
+        noCheckCertificates: true,
+        noWarnings: true,
+        output: outputFilePath,
+        preferFreeFormats: true,
+        writeInfoJson: false,
+        cookies: "./cookies.txt",
+        quiet: false,
+        embedThumbnail: true,
+        // addHeader: ["referer:youtube.com", "user-agent:googlebot"],
+      },
+      { timeout: 100000, killSignal: "SIGKILL" },
+    )
+    .catch((err) => err);
+};
+
+const saveVideoInfo = async (info: Payload, outputFilePath: string) => {
+  const video: Video = {
+    video_id: info.id,
+    video_name: info.title,
+    video_description: info.description,
+    video_url: info.webpage_url,
+    video_added_date: new Date().toISOString(),
+    video_path: outputFilePath,
+    video_length: info.duration,
+  };
+
+  videoRepository.create(video);
+};
+
+const refreshFeed = async () => {
+  await generateFeed(videoRepository.list());
+};
 
 export const download = async (videoId: string, handler?: (text: string) => Promise<Message.TextMessage>) => {
-  const outputFilePath = `./public/files/${videoId}.mp3`;
+  const outputFilePath = getFilePath(videoId, "mp3");
+  const storage = getStorage();
 
   try {
-    if (isVideoExists(videoId)) {
-      console.log("Video already exists");
+    if (videoRepository.exists(videoId)) {
+      logger.info("Video already exists");
       handler?.("Video already exists. Find it in the RSS feed.");
       return;
     }
 
-    console.log("Start downloading");
+    logger.info("Start downloading");
+    await downloadAudio(videoId, outputFilePath);
 
-    await youtubedl
-      .exec(
-        `https://youtu.be/watch?v=${videoId}`,
-        {
-          extractAudio: true,
-          audioFormat: "mp3",
-          noCheckCertificates: true,
-          noWarnings: true,
-          output: outputFilePath,
-          preferFreeFormats: true,
-          writeInfoJson: false,
-          cookies: "./cookies.txt",
-          quiet: false,
-          embedThumbnail: true,
-          // addHeader: ["referer:youtube.com", "user-agent:googlebot"],
-        },
-        { timeout: 100000, killSignal: "SIGKILL" }
-      )
-      .catch((err) => err);
-
-    console.log("Downloaded successfully");
+    logger.success("Downloaded successfully");
 
     const info: Payload = await getVideoInfo(videoId);
 
-    if (isS3Configured() && !Bun.env.IS_TEST) {
-      await uploadFileOnS3(videoId, outputFilePath);
+    if (!isTestEnv()) {
+      await storage.uploadAudio(videoId, outputFilePath);
     }
 
-    await addVideoToDb(
-      info.id,
-      info.title,
-      info.description,
-      info.webpage_url,
-      new Date().toISOString(),
-      outputFilePath,
-      info.duration
-    );
+    await saveVideoInfo(info, outputFilePath);
 
-    console.log("Start regenerating RSS feed");
-    generateFeed(getAllVideos());
-    console.log("Feed regenerated successfully");
+    logger.info("Start regenerating RSS feed");
+    await refreshFeed();
+    logger.success("Feed regenerated successfully");
     handler?.("RSS feed was successfully updated.");
   } catch (error) {
     handler?.("Something went wrong. Please try again later...");
+    logger.error("Download failed");
     console.error(error);
   }
 };

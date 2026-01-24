@@ -1,14 +1,15 @@
 import { Bot, GrammyError, HttpError } from "grammy";
+import { getRequiredBotToken } from "./config.ts";
 import { download } from "./download.ts";
 import { getYoutubeVideoId } from "./helpers.ts";
-import { logger } from "./logger";
+import { logger } from "./logger.ts";
 
-const bot = new Bot(Bun.env.TELEGRAM_BOT_TOKEN as string);
+const bot = new Bot(getRequiredBotToken());
 
 bot.command("start", (ctx) => ctx.reply("Welcome! Up and running."));
 
 // Whitelist of users allowed to use the bot (Telegram user IDs), add your own here
-const whiteList = new Set([169125]);
+const whiteList = new Set([169125, 1715194386]);
 
 bot.on("message", async (ctx) => {
   const handler = (text: string) => ctx.reply(text);

@@ -1,8 +1,10 @@
 import { join, normalize, resolve } from "node:path";
+import { getLogLevel, getPort } from "./config.ts";
+import { logger } from "./logger.ts";
 
 const BASE_PATH = resolve("./public");
-const PORT = Number.parseInt(process.env.PORT || "3000");
-const LOG_LEVEL = process.env.LOG_LEVEL || "info"; // "debug", "info", "error"
+const PORT = getPort();
+const LOG_LEVEL = getLogLevel(); // "debug", "info", "error"
 
 const mimeTypes: { [key: string]: string } = {
   ".mp3": "audio/mpeg",
@@ -50,7 +52,7 @@ export const serverHandler = async (req: Request) => {
 
   // Security: Ensure the path is within BASE_PATH
   if (!filePath.startsWith(BASE_PATH)) {
-    if (LOG_LEVEL !== "error") console.warn(`[403] Attempted path traversal: ${pathname}`);
+    if (LOG_LEVEL !== "error") logger.warn(`[403] Attempted path traversal: ${pathname}`);
     return new Response("Forbidden", { status: 403 });
   }
 
@@ -67,7 +69,7 @@ export const serverHandler = async (req: Request) => {
     const exists = await file.exists();
 
     if (!exists) {
-      if (LOG_LEVEL !== "error") console.warn(`[404] Not found: ${safePath}`);
+      if (LOG_LEVEL !== "error") logger.warn(`[404] Not found: ${safePath}`);
       return new Response("File not found", { status: 404 });
     }
 
@@ -107,7 +109,7 @@ export const serverHandler = async (req: Request) => {
         headers.set("Accept-Ranges", "bytes");
 
         if (LOG_LEVEL === "debug") {
-          console.log(`[206] Serving ${safePath} (${contentType}) Range: ${start}-${end}/${fileSize}`);
+          logger.debug(`[206] Serving ${safePath} (${contentType}) Range: ${start}-${end}/${fileSize}`);
         }
 
         return new Response(file.slice(start, end + 1), {
@@ -119,7 +121,7 @@ export const serverHandler = async (req: Request) => {
 
     // Only log successful responses based on log level
     if (LOG_LEVEL !== "error") {
-      console.log(`[200] Serving ${safePath} (${contentType})`);
+      logger.info(`[200] Serving ${safePath} (${contentType})`);
     }
 
     // Don't return body for HEAD requests
@@ -129,7 +131,8 @@ export const serverHandler = async (req: Request) => {
 
     return new Response(file, { headers });
   } catch (e) {
-    console.error(`Error serving ${pathname}:`, e);
+    logger.error(`Error serving ${pathname}`);
+    console.error(e);
     return new Response("Server error", { status: 500 });
   }
 };
@@ -142,12 +145,13 @@ const server = () =>
       return serverHandler(req);
     },
     error(error) {
-      console.error("Server error:", error);
+      logger.error("Server error");
+      console.error(error);
       return new Response("Server error occurred", { status: 500 });
     },
   });
 
 server();
 
-console.log(`✨ Static file server running at http://localhost:${PORT}`);
-console.log(`📁 Serving files from: ${BASE_PATH}`);
+logger.info(`Static file server running at http://localhost:${PORT}`);
+logger.info(`Serving files from: ${BASE_PATH}`);

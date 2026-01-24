@@ -1,13 +1,14 @@
 import { Podcast } from "podcast";
-import { isS3Configured } from "./helpers.ts";
-import { isCoverImageExistsOnS3, uploadXmlToS3 } from "./s3.ts";
+import { getRssFilePath, getServerUrl, isTestEnv } from "./config.ts";
+import { logger } from "./logger.ts";
+import { getStorage } from "./storage.ts";
 import type { Video } from "./types.ts";
 
-export const serverUrl = () => (Bun.env.IS_TEST === "true" ? "https://test.com" : Bun.env.SERVER_URL);
+export const serverUrl = () => getServerUrl();
 
-export const rssFile = () => (Bun.env.IS_TEST === "true" ? "./public/rss.test.xml" : "./public/rss.xml");
+export const rssFile = () => getRssFilePath();
 
-const xml = (feed: Podcast) => (Bun.env.IS_TEST === "true" ? feed.buildXml() : feed.buildXml({ indent: "  " }));
+const xml = (feed: Podcast) => (isTestEnv() ? feed.buildXml() : feed.buildXml({ indent: "  " }));
 
 const feedOptions = {
   title: "YouTube",
@@ -44,16 +45,17 @@ const feedOptions = {
 
 export const generateFeed = async (allVideos: Video[]) => {
   const feed = new Podcast(feedOptions);
+  const storage = getStorage();
 
   for (const item of allVideos) {
     const videoFile = Bun.file(item.video_path);
     const fileExists = await videoFile.exists();
 
-    if (!fileExists && Bun.env.IS_TEST !== "true") {
-      console.log(`File ${item.video_path} doesn't exist. Skipping...`);
+    if (!fileExists && !isTestEnv()) {
+      logger.info(`File ${item.video_path} doesn't exist. Skipping...`);
       continue;
     }
-    
+
     feed.addItem({
       title: item.video_name,
       description: item.video_description ?? "",
@@ -61,7 +63,7 @@ export const generateFeed = async (allVideos: Video[]) => {
       guid: item.video_id,
       author: "Arthur N",
       date: item.video_added_date,
-      enclosure: Bun.env.IS_TEST !== "true"
+      enclosure: !isTestEnv()
         ? {
             url: `${serverUrl()}/files/${item.video_id}.mp3`,
             file: item.video_path,
@@ -78,8 +80,8 @@ export const generateFeed = async (allVideos: Video[]) => {
 
   Bun.write(rssFile(), xml(feed));
 
-  if (isS3Configured()) {
-    await uploadXmlToS3(rssFile());
-    await isCoverImageExistsOnS3();
+  if (!isTestEnv()) {
+    await storage.uploadRss(rssFile());
+    await storage.ensureCoverImage();
   }
 };

@@ -1,11 +1,23 @@
 import { Database } from "bun:sqlite";
+import { getDbFileName, isTestEnv } from "./config.ts";
+import { logger } from "./logger.ts";
+import type { Video } from "./types.ts";
 
-export const dbName = () => (Bun.env.IS_TEST === "true" ? "youtube2rss.test.db" : "youtube2rss.db");
+export const dbName = () => getDbFileName();
+
+const runWithDb = <T>(handler: (db: Database) => T) => {
+  const db = new Database(dbName(), { readwrite: true });
+  try {
+    return handler(db);
+  } finally {
+    db.close();
+  }
+};
 
 export const createDb = async () => {
   const dbFile = Bun.file(dbName());
-  if ((await dbFile.exists()) && Bun.env.IS_TEST !== "true") {
-    console.log("Database already exists");
+  if ((await dbFile.exists()) && !isTestEnv()) {
+    logger.info("Database already exists");
     return;
   }
 
@@ -25,10 +37,54 @@ export const createDb = async () => {
 
   db.close();
 
-  if (Bun.env.IS_TEST !== "true") {
-    console.log("Database created!");
+  if (!isTestEnv()) {
+    logger.success("Database created!");
   }
 };
+
+export interface VideoRepository {
+  create(video: Video): void;
+  list(): Video[];
+  exists(videoId: string): boolean;
+}
+
+export const createVideoRepository = (): VideoRepository => {
+  return {
+    create(video: Video) {
+      runWithDb((db) => {
+        db.run(
+          "INSERT INTO videos (video_id, video_name, video_description, video_url, video_added_date, video_path, video_length) VALUES (?,?,?,?,?,?,?)",
+          [
+            video.video_id,
+            video.video_name,
+            video.video_description,
+            video.video_url,
+            video.video_added_date,
+            video.video_path,
+            video.video_length,
+          ]
+        );
+      });
+    },
+    list() {
+      return runWithDb((db) => {
+        const query = db.query<Video, null>("SELECT * FROM videos");
+        return query.all(null);
+      });
+    },
+    exists(videoId: string) {
+      return runWithDb((db) => {
+        const query = db.query<{ exists_flag: number }, string>(
+          "SELECT EXISTS (SELECT 1 FROM videos WHERE video_id = ?) as exists_flag"
+        );
+        const result = query.get(videoId);
+        return Boolean(result?.exists_flag);
+      });
+    },
+  };
+};
+
+export const videoRepository = createVideoRepository();
 
 export const addVideoToDb = async (
   videoId: string,
@@ -39,40 +95,17 @@ export const addVideoToDb = async (
   videoPath: string,
   videoLength: number
 ) => {
-  const db = new Database(dbName(), { readwrite: true });
-
-  db.run(
-    "INSERT INTO videos (video_id, video_name, video_description, video_url, video_added_date, video_path, video_length) VALUES (?,?,?,?,?,?,?)",
-    [videoId, videoName, videoDescription, videoUrl, videoAddeddate, videoPath, videoLength]
-  );
-
-  db.close();
+  videoRepository.create({
+    video_id: videoId,
+    video_name: videoName,
+    video_description: videoDescription,
+    video_url: videoUrl,
+    video_added_date: videoAddeddate,
+    video_path: videoPath,
+    video_length: videoLength,
+  });
 };
 
-export const getAllVideos = () => {
-  const db = new Database(dbName(), { readwrite: true });
+export const getAllVideos = () => videoRepository.list();
 
-  const query = db.query<
-    {
-      video_id: string;
-      video_name: string;
-      video_description: string | null;
-      video_url: string;
-      video_added_date: string;
-      video_path: string;
-      video_length: number;
-    },
-    null
-  >("SELECT * FROM videos");
-  const videos = query.all(null);
-  db.close();
-  return videos;
-};
-
-export const isVideoExists = (videoId: string) => {
-  const db = new Database(dbName(), { readwrite: true });
-  const query = db.query<[{ string: number }], string>("SELECT EXISTS (SELECT * FROM videos WHERE video_id = ?)");
-  const video = query.all(videoId);
-  db.close();
-  return Boolean(Object.values(video[0])[0]);
-};
+export const isVideoExists = (videoId: string) => videoRepository.exists(videoId);
