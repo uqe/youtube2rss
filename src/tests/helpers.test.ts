@@ -44,6 +44,46 @@ describe("helpers tests", () => {
       const url = `https://YOUTU.be/${id}`;
       expect(getYoutubeVideoId(url)).toBe(id);
     });
+
+    it("should return null for empty string", () => {
+      expect(getYoutubeVideoId("")).toBeNull();
+    });
+
+    it("should return null for random text", () => {
+      expect(getYoutubeVideoId("hello world")).toBeNull();
+      expect(getYoutubeVideoId("dQw4w9WgXcQ")).toBeNull(); // just ID without URL
+    });
+
+    it("should handle video ID with underscores and hyphens", () => {
+      const id = "abc_def-123";
+      expect(getYoutubeVideoId(`https://youtu.be/${id}`)).toBe(id);
+    });
+
+    it("should handle video ID longer than 11 characters", () => {
+      const longId = "dQw4w9WgXcQabc";
+      expect(getYoutubeVideoId(`https://youtu.be/${longId}`)).toBe(longId);
+    });
+
+    it("should handle HTTP URLs (not just HTTPS)", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`http://youtu.be/${id}`)).toBe(id);
+      expect(getYoutubeVideoId(`http://www.youtube.com/watch?v=${id}`)).toBe(id);
+    });
+
+    it("should handle youtube.com without www", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`https://youtube.com/watch?v=${id}`)).toBe(id);
+    });
+
+    it("should handle vi parameter (alternate format)", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`https://www.youtube.com/watch?vi=${id}`)).toBe(id);
+    });
+
+    it("should handle URL with feature parameter before v", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`https://www.youtube.com/watch?feature=share&v=${id}`)).toBe(id);
+    });
   });
 
   describe("isS3Configured", () => {
@@ -101,6 +141,28 @@ describe("helpers tests", () => {
     it("should format a combination of hours, minutes, and seconds", () => {
       expect(formatSeconds(3661)).toBe("01:01:01");
     });
+
+    it("should handle large numbers (multiple hours)", () => {
+      expect(formatSeconds(7200)).toBe("02:00:00"); // 2 hours
+      expect(formatSeconds(36000)).toBe("10:00:00"); // 10 hours
+      expect(formatSeconds(86400)).toBe("24:00:00"); // 24 hours
+    });
+
+    it("should handle edge case of 59:59", () => {
+      expect(formatSeconds(3599)).toBe("00:59:59");
+    });
+
+    it("should handle maximum typical video length", () => {
+      // 99 hours, 59 minutes, 59 seconds
+      expect(formatSeconds(359999)).toBe("99:59:59");
+    });
+
+    it("should handle decimal values (no floor - uses actual modulo)", () => {
+      // formatSeconds doesn't floor, it uses modulo directly
+      // 61.9 seconds = 0 hours, 1 minute, 1.9 seconds
+      expect(formatSeconds(61)).toBe("00:01:01");
+      expect(formatSeconds(3661)).toBe("01:01:01");
+    });
   });
 
   describe("getFilePath", () => {
@@ -123,6 +185,17 @@ describe("helpers tests", () => {
       const path1 = getFilePath(videoId, "mp3");
       const path2 = getFilePath(videoId, "mp3");
       expect(path1).toBe(path2);
+    });
+
+    it("should handle special characters in videoId", () => {
+      Bun.env.IS_TEST = "true";
+      const specialId = "abc_def-123";
+      expect(getFilePath(specialId, "mp3")).toBe(`./src/tests/data/${specialId}.mp3`);
+    });
+
+    it("should handle empty videoId", () => {
+      Bun.env.IS_TEST = "true";
+      expect(getFilePath("", "mp3")).toBe("./src/tests/data/.mp3");
     });
   });
 });

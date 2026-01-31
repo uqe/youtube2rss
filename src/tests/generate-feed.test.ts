@@ -124,5 +124,159 @@ describe("generate-feed tests", () => {
       expect(xmlContent).toContain(nonExistentVideo.video_id);
       expect(xmlContent).toContain(nonExistentVideo.video_name);
     });
+
+    it("should handle empty video list", async () => {
+      await generateFeed([]);
+
+      const fileExists = await Bun.file(rssFile()).exists();
+      expect(fileExists).toBe(true);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+      const doc = parse(xmlContent) as unknown as RSSDoc;
+
+      // Channel metadata should still exist
+      expect(doc.rss.channel.title).toBe("YouTube");
+      expect(doc.rss.channel.description).toBe("YouTube personal feed");
+
+      // Should not contain any <item> elements
+      expect(xmlContent).not.toContain("<item>");
+    });
+
+    it("should handle video with null description", async () => {
+      const videoWithNullDesc: Video = {
+        video_id: "NullDescVideo",
+        video_name: "Video without description",
+        video_description: null,
+        video_url: "https://example.com",
+        video_added_date: "2022-01-05",
+        video_path: "/path/to/video.mp3",
+        video_length: 150,
+      };
+
+      await generateFeed([videoWithNullDesc]);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+
+      expect(xmlContent).toContain(videoWithNullDesc.video_id);
+      expect(xmlContent).toContain(videoWithNullDesc.video_name);
+      // When description is null, podcast library may omit description tag
+      // or generate empty CDATA - verify video is still in feed
+      expect(xmlContent).toContain("<item>");
+    });
+
+    it("should handle video with very long description", async () => {
+      const longDescription = "A".repeat(5000);
+      const videoWithLongDesc: Video = {
+        video_id: "LongDescVideo",
+        video_name: "Video with long description",
+        video_description: longDescription,
+        video_url: "https://example.com",
+        video_added_date: "2022-01-06",
+        video_path: "/path/to/video.mp3",
+        video_length: 200,
+      };
+
+      await generateFeed([videoWithLongDesc]);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+
+      expect(xmlContent).toContain(videoWithLongDesc.video_id);
+      expect(xmlContent).toContain(longDescription);
+    });
+
+    it("should handle Unicode characters in video data", async () => {
+      const unicodeVideo: Video = {
+        video_id: "UnicodeVideo",
+        video_name: "日本語タイトル - Русский заголовок",
+        video_description: "Описание с эмодзи 🎉 和日文描述",
+        video_url: "https://example.com",
+        video_added_date: "2022-01-07",
+        video_path: "/path/to/unicode.mp3",
+        video_length: 180,
+      };
+
+      await generateFeed([unicodeVideo]);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+
+      expect(xmlContent).toContain(unicodeVideo.video_name);
+      expect(xmlContent).toContain("🎉");
+    });
+
+    it("should handle video with zero length", async () => {
+      const zeroLengthVideo: Video = {
+        video_id: "ZeroLengthVideo",
+        video_name: "Zero length video",
+        video_description: "This video has zero length",
+        video_url: "https://example.com",
+        video_added_date: "2022-01-08",
+        video_path: "/path/to/zero.mp3",
+        video_length: 0,
+      };
+
+      await generateFeed([zeroLengthVideo]);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+
+      expect(xmlContent).toContain(zeroLengthVideo.video_id);
+      // Zero length video - duration tag may be omitted by podcast library
+      expect(xmlContent).toContain("<item>");
+    });
+
+    it("should handle multiple videos with different properties", async () => {
+      const videos: Video[] = [
+        {
+          video_id: "vid1",
+          video_name: "First video",
+          video_description: "Description 1",
+          video_url: "https://example.com/1",
+          video_added_date: "2022-01-01",
+          video_path: "/path/1.mp3",
+          video_length: 100,
+        },
+        {
+          video_id: "vid2",
+          video_name: "Second video",
+          video_description: null,
+          video_url: "https://example.com/2",
+          video_added_date: "2022-01-02",
+          video_path: "/path/2.mp3",
+          video_length: 200,
+        },
+        {
+          video_id: "vid3",
+          video_name: "Third video with special chars & <test>",
+          video_description: "Description with 'quotes'",
+          video_url: "https://example.com/3",
+          video_added_date: "2022-01-03",
+          video_path: "/path/3.mp3",
+          video_length: 3600, // 1 hour
+        },
+      ];
+
+      await generateFeed(videos);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+
+      // All videos should be in the feed
+      expect(xmlContent).toContain("vid1");
+      expect(xmlContent).toContain("vid2");
+      expect(xmlContent).toContain("vid3");
+
+      // Check durations (podcast library may format differently)
+      expect(xmlContent).toContain("<itunes:duration>");
+    });
+  });
+
+  describe("serverUrl", () => {
+    it("should return test URL in test environment", () => {
+      expect(serverUrl()).toBe("https://test.com");
+    });
+  });
+
+  describe("rssFile", () => {
+    it("should return test RSS file path in test environment", () => {
+      expect(rssFile()).toBe("./public/rss.test.xml");
+    });
   });
 });

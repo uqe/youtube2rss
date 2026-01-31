@@ -6,7 +6,7 @@ const BASE_PATH = resolve("./public");
 const PORT = getPort();
 const LOG_LEVEL = getLogLevel(); // "debug", "info", "error"
 
-const mimeTypes: { [key: string]: string } = {
+export const mimeTypes: { [key: string]: string } = {
   ".mp3": "audio/mpeg",
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -15,7 +15,7 @@ const mimeTypes: { [key: string]: string } = {
   ".html": "text/html",
 };
 
-const getOptimalCacheControl = (contentType: string): string => {
+export const getOptimalCacheControl = (contentType: string): string => {
   if (contentType === "audio/mpeg") {
     return "public, max-age=2592000"; // 30 days for audio files
   }
@@ -28,7 +28,7 @@ const getOptimalCacheControl = (contentType: string): string => {
   return "public, max-age=3600"; // 1 hour for other content
 };
 
-const parseRangeHeader = (rangeHeader: string, fileSize: number): [number, number] | null => {
+export const parseRangeHeader = (rangeHeader: string, fileSize: number): [number, number] | null => {
   const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
   if (!match) return null;
 
