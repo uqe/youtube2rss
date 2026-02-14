@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "adze": "^2.3.0",
-    "grammy": "^1.39.3",
+    "grammy": "^1.40.0",
     "podcast": "^2.0.1",
     "youtube-dl-exec": "^3.0.30"
   },
