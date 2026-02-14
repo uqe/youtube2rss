@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@libs/xml": "npm:@jsr/libs__xml",
-    "@types/bun": "^1.3.8",
+    "@types/bun": "^1.3.9",
     "oxfmt": "^0.32.0",
     "oxlint": "^1.47.0"
   },
