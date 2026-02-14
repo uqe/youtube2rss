@@ -30,13 +30,13 @@
   },
   "dependencies": {
     "adze": "^2.3.0",
-    "grammy": "^1.39.3",
+    "grammy": "^1.40.0",
     "podcast": "^2.0.1",
-    "youtube-dl-exec": "^3.0.30"
+    "youtube-dl-exec": "^3.1.1"
   },
   "devDependencies": {
     "@libs/xml": "npm:@jsr/libs__xml",
-    "@types/bun": "^1.3.8",
+    "@types/bun": "^1.3.9",
     "oxfmt": "^0.32.0",
     "oxlint": "^1.47.0"
   },
