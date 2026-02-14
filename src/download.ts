@@ -1,5 +1,3 @@
-import type { Message } from "grammy/types";
-import youtubedl, { type Payload } from "youtube-dl-exec";
 import { isTestEnv } from "./config.ts";
 import { videoRepository } from "./db.ts";
 import { generateFeed } from "./generate-feed.ts";
@@ -7,6 +5,8 @@ import { getFilePath, getVideoInfo } from "./helpers.ts";
 import { logger } from "./logger.ts";
 import { getStorage } from "./storage.ts";
 import type { Video } from "./types.ts";
+import type { Message } from "grammy/types";
+import youtubedl, { type Payload } from "youtube-dl-exec";
 
 const downloadAudio = async (videoId: string, outputFilePath: string) => {
   await youtubedl.exec(

@@ -1,5 +1,5 @@
-import youtubedl, { type Payload } from "youtube-dl-exec";
 import { getFilesDir, isS3Configured as isS3ConfiguredConfig } from "./config.ts";
+import youtubedl, { type Payload } from "youtube-dl-exec";
 
 export const getYoutubeVideoId = (message: string) => {
   const regex =

@@ -1,7 +1,7 @@
-import { S3Client } from "bun";
 import { getS3Config, isS3Configured } from "./config.ts";
 import { logger } from "./logger.ts";
 import type { Storage } from "./storage.ts";
+import { S3Client } from "bun";
 
 const createS3Client = () => {
   const s3Config = getS3Config();

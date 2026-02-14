@@ -1,8 +1,8 @@
-import { Podcast } from "podcast";
 import { getRssFilePath, getServerUrl, isTestEnv } from "./config.ts";
 import { logger } from "./logger.ts";
 import { getStorage } from "./storage.ts";
 import type { Video } from "./types.ts";
+import { Podcast } from "podcast";
 
 export const serverUrl = () => getServerUrl();
 

@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { getStorage, type Storage } from "../storage.ts";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 describe("storage tests", () => {
   // Сохраняем оригинальные значения переменных окружения

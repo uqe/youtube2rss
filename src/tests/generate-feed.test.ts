@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { parse } from "@libs/xml";
 import { generateFeed, rssFile, serverUrl } from "../generate-feed.ts";
 import { formatSeconds } from "../helpers.ts";
 import type { Video } from "../types.ts";
+import { parse } from "@libs/xml";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
 interface RSSDoc {
   rss: {

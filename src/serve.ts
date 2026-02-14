@@ -1,6 +1,6 @@
-import { join, normalize, resolve } from "node:path";
 import { getLogLevel, getPort } from "./config.ts";
 import { logger } from "./logger.ts";
+import { join, normalize, resolve } from "node:path";
 
 const BASE_PATH = resolve("./public");
 const PORT = getPort();

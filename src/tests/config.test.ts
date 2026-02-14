@@ -1,4 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
   getBotToken,
   getDbFileName,
@@ -15,6 +14,7 @@ import {
   isTestEnv,
   requireEnv,
 } from "../config.ts";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 describe("config tests", () => {
   // Сохраняем оригинальные значения переменных окружения
@@ -309,21 +309,21 @@ describe("config tests", () => {
     it("should throw error when TELEGRAM_WHITELIST is not set", () => {
       Bun.env.TELEGRAM_WHITELIST = undefined;
       expect(() => getTelegramWhitelist()).toThrow(
-        "TELEGRAM_WHITELIST environment variable must be set with at least one valid Telegram user ID",
+        "TELEGRAM_WHITELIST environment variable must be set with at least one valid Telegram user ID"
       );
     });
 
     it("should throw error when TELEGRAM_WHITELIST is empty", () => {
       Bun.env.TELEGRAM_WHITELIST = "";
       expect(() => getTelegramWhitelist()).toThrow(
-        "TELEGRAM_WHITELIST environment variable must be set with at least one valid Telegram user ID",
+        "TELEGRAM_WHITELIST environment variable must be set with at least one valid Telegram user ID"
       );
     });
 
     it("should throw error when TELEGRAM_WHITELIST contains only invalid values", () => {
       Bun.env.TELEGRAM_WHITELIST = "invalid,abc,def";
       expect(() => getTelegramWhitelist()).toThrow(
-        "TELEGRAM_WHITELIST environment variable must be set with at least one valid Telegram user ID",
+        "TELEGRAM_WHITELIST environment variable must be set with at least one valid Telegram user ID"
       );
     });
 

@@ -1,7 +1,7 @@
-import { Database } from "bun:sqlite";
 import { getDbFileName, isTestEnv } from "./config.ts";
 import { logger } from "./logger.ts";
 import type { Video } from "./types.ts";
+import { Database } from "bun:sqlite";
 
 export const dbName = () => getDbFileName();
 

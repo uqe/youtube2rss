@@ -1,5 +1,3 @@
-import { Database } from "bun:sqlite";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
 import {
   addVideoToDb,
   createDb,
@@ -10,6 +8,8 @@ import {
   videoRepository,
 } from "../db.ts";
 import type { Video } from "../types.ts";
+import { Database } from "bun:sqlite";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
 
 const testDbFile = "youtube2rss.test.db";
 

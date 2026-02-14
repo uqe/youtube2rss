@@ -1,6 +1,6 @@
+import { getOptimalCacheControl, mimeTypes, parseRangeHeader, serverHandler } from "../serve.ts";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { resolve } from "node:path";
-import { getOptimalCacheControl, mimeTypes, parseRangeHeader, serverHandler } from "../serve.ts";
 
 describe("serve tests", () => {
   describe("mimeTypes", () => {

@@ -1,8 +1,8 @@
-import { Bot, GrammyError, HttpError } from "grammy";
 import { getRequiredBotToken, getTelegramWhitelist } from "./config.ts";
 import { download } from "./download.ts";
 import { getYoutubeVideoId } from "./helpers.ts";
 import { logger } from "./logger.ts";
+import { Bot, GrammyError, HttpError } from "grammy";
 
 const bot = new Bot(getRequiredBotToken());
 

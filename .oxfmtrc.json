@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/logs/**", "**/public/files/**"],
+  "printWidth": 120,
+  "trailingComma": "es5",
+  "experimentalSortImports": {
+    "groups": [["type-import", "value-import"]]
+  },
+  "type": "alphabetical",
+  "order": "asc",
+  "fallbackSort": {
+    "type": "subgroup-order",
+    "order": "asc"
+  }
+}
