@@ -32,7 +32,7 @@
     "adze": "^2.3.0",
     "grammy": "^1.40.0",
     "podcast": "^2.0.1",
-    "youtube-dl-exec": "^3.1.1"
+    "youtube-dl-exec": "^3.1.3"
   },
   "devDependencies": {
     "@libs/xml": "npm:@jsr/libs__xml",
