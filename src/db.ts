@@ -3,10 +3,31 @@ import { logger } from "./logger.ts";
 import type { Video } from "./types.ts";
 import { Database } from "bun:sqlite";
 
-export const dbName = () => getDbFileName();
+type DatabaseOptions = ConstructorParameters<typeof Database>[1];
 
-const runWithDb = <T>(handler: (db: Database) => T) => {
-  const db = new Database(dbName(), { readwrite: true });
+interface DbLogger {
+  info(message: string): void;
+  success(message: string): void;
+}
+
+export interface DatabaseFactory {
+  fileName(): string;
+  open(options?: DatabaseOptions): Database;
+}
+
+export const createDatabaseFactory = (getFileName: () => string = getDbFileName): DatabaseFactory => ({
+  fileName: getFileName,
+  open(options?: DatabaseOptions) {
+    return new Database(getFileName(), options);
+  },
+});
+
+const defaultDatabaseFactory = createDatabaseFactory();
+
+export const dbName = () => defaultDatabaseFactory.fileName();
+
+const runWithDb = <T>(handler: (db: Database) => T, dbFactory: DatabaseFactory = defaultDatabaseFactory) => {
+  const db = dbFactory.open({ readwrite: true });
   try {
     return handler(db);
   } finally {
@@ -14,14 +35,24 @@ const runWithDb = <T>(handler: (db: Database) => T) => {
   }
 };
 
-export const createDb = async () => {
-  const dbFile = Bun.file(dbName());
-  if ((await dbFile.exists()) && !isTestEnv()) {
-    logger.info("Database already exists");
+interface CreateDbOptions {
+  dbFactory?: DatabaseFactory;
+  isTestEnvironment?: () => boolean;
+  log?: DbLogger;
+}
+
+export const createDb = async ({
+  dbFactory = defaultDatabaseFactory,
+  isTestEnvironment = isTestEnv,
+  log = logger,
+}: CreateDbOptions = {}) => {
+  const dbFile = Bun.file(dbFactory.fileName());
+  if ((await dbFile.exists()) && !isTestEnvironment()) {
+    log.info("Database already exists");
     return;
   }
 
-  const db = new Database(dbName(), { create: true });
+  const db = dbFactory.open({ create: true });
   db.run(`
     CREATE TABLE IF NOT EXISTS videos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,8 +68,8 @@ export const createDb = async () => {
 
   db.close();
 
-  if (!isTestEnv()) {
-    logger.success("Database created!");
+  if (!isTestEnvironment()) {
+    log.success("Database created!");
   }
 };
 
@@ -48,7 +79,13 @@ export interface VideoRepository {
   exists(videoId: string): boolean;
 }
 
-export const createVideoRepository = (): VideoRepository => {
+interface VideoRepositoryOptions {
+  dbFactory?: DatabaseFactory;
+}
+
+export const createVideoRepository = ({
+  dbFactory = defaultDatabaseFactory,
+}: VideoRepositoryOptions = {}): VideoRepository => {
   return {
     create(video: Video) {
       runWithDb((db) => {
@@ -64,13 +101,15 @@ export const createVideoRepository = (): VideoRepository => {
             video.video_length,
           ]
         );
-      });
+      }, dbFactory);
     },
     list() {
       return runWithDb((db) => {
-        const query = db.query<Video, null>("SELECT * FROM videos");
+        const query = db.query<Video, null>(
+          "SELECT video_id, video_name, video_description, video_url, video_added_date, video_path, video_length FROM videos ORDER BY id"
+        );
         return query.all(null);
-      });
+      }, dbFactory);
     },
     exists(videoId: string) {
       return runWithDb((db) => {
@@ -79,7 +118,7 @@ export const createVideoRepository = (): VideoRepository => {
         );
         const result = query.get(videoId);
         return Boolean(result?.exists_flag);
-      });
+      }, dbFactory);
     },
   };
 };

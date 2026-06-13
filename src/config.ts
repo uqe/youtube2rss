@@ -34,23 +34,32 @@ export const getRequiredServerUrl = () => requireEnv("SERVER_URL");
 
 export const getRequiredBotToken = () => requireEnv("TELEGRAM_BOT_TOKEN");
 
-export const getPort = () => Number.parseInt(Bun.env.PORT ?? "3000", 10);
+export const parseInteger = (value: string): number => {
+  const normalizedValue = value.trim();
+  if (!/^-?\d+$/.test(normalizedValue)) {
+    return Number.NaN;
+  }
+
+  return Number.parseInt(normalizedValue, 10);
+};
+
+export const getPort = () => parseInteger(Bun.env.PORT ?? "3000");
 
 export const getLogLevel = () => Bun.env.LOG_LEVEL ?? "info";
 
-const parseNumberList = (value?: string | null): number[] => {
+export const parseIntegerList = (value?: string | null): number[] => {
   if (!value) {
     return [];
   }
 
   return value
     .split(",")
-    .map((item) => Number.parseInt(item.trim(), 10))
+    .map((item) => parseInteger(item))
     .filter((item) => !Number.isNaN(item));
 };
 
 export const getTelegramWhitelist = () => {
-  const envWhitelist = parseNumberList(Bun.env.TELEGRAM_WHITELIST);
+  const envWhitelist = parseIntegerList(Bun.env.TELEGRAM_WHITELIST);
   if (envWhitelist.length === 0) {
     throw new Error("TELEGRAM_WHITELIST environment variable must be set with at least one valid Telegram user ID");
   }

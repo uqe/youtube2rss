@@ -12,6 +12,8 @@ import {
   getTelegramWhitelist,
   isS3Configured,
   isTestEnv,
+  parseInteger,
+  parseIntegerList,
   requireEnv,
 } from "../config.ts";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
@@ -261,6 +263,29 @@ describe("config tests", () => {
     });
   });
 
+  describe("parseInteger", () => {
+    it("should parse signed integer strings", () => {
+      expect(parseInteger("123")).toBe(123);
+      expect(parseInteger(" -123 ")).toBe(-123);
+    });
+
+    it("should reject partial integer strings", () => {
+      expect(parseInteger("123abc")).toBeNaN();
+      expect(parseInteger("12.3")).toBeNaN();
+      expect(parseInteger("")).toBeNaN();
+    });
+  });
+
+  describe("parseIntegerList", () => {
+    it("should parse comma-separated integers and skip invalid entries", () => {
+      expect(parseIntegerList("123, invalid, 456")).toEqual([123, 456]);
+    });
+
+    it("should reject partial integer entries", () => {
+      expect(parseIntegerList("123abc,456")).toEqual([456]);
+    });
+  });
+
   describe("getPort", () => {
     it("should return PORT value as number", () => {
       Bun.env.PORT = "8080";
@@ -274,6 +299,16 @@ describe("config tests", () => {
 
     it("should handle invalid PORT value", () => {
       Bun.env.PORT = "invalid";
+      expect(getPort()).toBeNaN();
+    });
+
+    it("should parse PORT with surrounding whitespace", () => {
+      Bun.env.PORT = " 8080 ";
+      expect(getPort()).toBe(8080);
+    });
+
+    it("should reject PORT values with trailing text", () => {
+      Bun.env.PORT = "8080abc";
       expect(getPort()).toBeNaN();
     });
   });
@@ -306,6 +341,11 @@ describe("config tests", () => {
       expect(getTelegramWhitelist()).toEqual([123456, 789012]);
     });
 
+    it("should filter out partially numeric values", () => {
+      Bun.env.TELEGRAM_WHITELIST = "123456abc,789012";
+      expect(getTelegramWhitelist()).toEqual([789012]);
+    });
+
     it("should throw error when TELEGRAM_WHITELIST is not set", () => {
       Bun.env.TELEGRAM_WHITELIST = undefined;
       expect(() => getTelegramWhitelist()).toThrow(
@@ -330,6 +370,16 @@ describe("config tests", () => {
     it("should handle single user ID", () => {
       Bun.env.TELEGRAM_WHITELIST = "123456";
       expect(getTelegramWhitelist()).toEqual([123456]);
+    });
+
+    it("should keep duplicate user IDs in their original order", () => {
+      Bun.env.TELEGRAM_WHITELIST = "123456,789012,123456";
+      expect(getTelegramWhitelist()).toEqual([123456, 789012, 123456]);
+    });
+
+    it("should ignore empty comma-separated entries", () => {
+      Bun.env.TELEGRAM_WHITELIST = "123456,,789012,";
+      expect(getTelegramWhitelist()).toEqual([123456, 789012]);
     });
   });
 });

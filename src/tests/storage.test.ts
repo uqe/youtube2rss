@@ -1,4 +1,4 @@
-import { getStorage, type Storage } from "../storage.ts";
+import { createLocalStorage, createStorage, getStorage, type Storage } from "../storage.ts";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 describe("storage tests", () => {
@@ -40,17 +40,17 @@ describe("storage tests", () => {
   });
 
   describe("Local storage (when S3 is not configured)", () => {
-    it("should return a storage instance", () => {
-      // Без S3 конфигурации должен вернуться локальный storage
-      // Нельзя напрямую тестировать getStorage из-за singleton,
-      // поэтому тестируем интерфейс
-      const mockLocalStorage: Storage = {
-        uploadAudio: async (): Promise<void> => {},
-        uploadRss: async (): Promise<void> => {},
-        ensureCoverImage: async (): Promise<void> => {},
-      };
+    it("should return a local storage instance from getStorage", async () => {
+      const storage = getStorage();
 
-      expect(mockLocalStorage).toBeDefined();
+      expect(storage).toBeDefined();
+      await expect(storage.uploadAudio("videoId", "/missing/audio.mp3")).resolves.toBeUndefined();
+      await expect(storage.uploadRss("/missing/rss.xml")).resolves.toBeUndefined();
+      await expect(storage.ensureCoverImage()).resolves.toBeUndefined();
+    });
+
+    it("should reuse the same storage instance across calls", () => {
+      expect(getStorage()).toBe(getStorage());
     });
 
     it("uploadAudio should resolve without error for local storage", async () => {
@@ -86,16 +86,8 @@ describe("storage tests", () => {
 
   describe("Storage factory pattern", () => {
     it("local storage methods should be no-op functions", async () => {
-      // Создаём локальное хранилище напрямую для теста
-      const createLocalStorage = (): Storage => ({
-        async uploadAudio(): Promise<void> {},
-        async uploadRss(): Promise<void> {},
-        async ensureCoverImage(): Promise<void> {},
-      });
-
       const localStorage = createLocalStorage();
 
-      // Все методы должны выполняться без ошибок и возвращать undefined
       const audioResult = await localStorage.uploadAudio("videoId", "/path/to/audio.mp3");
       const rssResult = await localStorage.uploadRss("/path/to/rss.xml");
       const coverResult = await localStorage.ensureCoverImage();
@@ -106,23 +98,36 @@ describe("storage tests", () => {
     });
 
     it("should handle multiple calls to local storage methods", async () => {
-      const createLocalStorage = (): Storage => ({
-        async uploadAudio(): Promise<void> {},
-        async uploadRss(): Promise<void> {},
-        async ensureCoverImage(): Promise<void> {},
-      });
-
       const localStorage = createLocalStorage();
 
-      // Множественные вызовы не должны вызывать ошибок
       await localStorage.uploadAudio("video1", "/path/1.mp3");
       await localStorage.uploadAudio("video2", "/path/2.mp3");
       await localStorage.uploadRss("/path/rss.xml");
       await localStorage.ensureCoverImage();
       await localStorage.ensureCoverImage();
 
-      // Если дошли сюда без ошибок - тест пройден
       expect(true).toBe(true);
+    });
+
+    it("createStorage should return local storage when remote storage is not configured", async () => {
+      const storage = createStorage({
+        isRemoteConfigured: () => false,
+        createRemoteStorage: () => {
+          throw new Error("Remote storage should not be created");
+        },
+      });
+
+      await expect(storage.uploadAudio("videoId", "/missing/audio.mp3")).resolves.toBeUndefined();
+    });
+
+    it("createStorage should return remote storage when remote storage is configured", () => {
+      const remoteStorage = createLocalStorage();
+      const storage = createStorage({
+        isRemoteConfigured: () => true,
+        createRemoteStorage: () => remoteStorage,
+      });
+
+      expect(storage).toBe(remoteStorage);
     });
   });
 });

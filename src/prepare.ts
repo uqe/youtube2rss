@@ -1,3 +1,9 @@
 import { createDb } from "./db.ts";
 
-createDb();
+export const prepare = async () => {
+  await createDb();
+};
+
+if (import.meta.main) {
+  await prepare();
+}

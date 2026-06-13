@@ -1,5 +1,6 @@
-import { generateFeed, rssFile, serverUrl } from "../generate-feed.ts";
+import { createFeedItem, createFeedOptions, generateFeed, getAudioUrl, rssFile, serverUrl } from "../generate-feed.ts";
 import { formatSeconds } from "../helpers.ts";
+import type { Storage } from "../storage.ts";
 import type { Video } from "../types.ts";
 import { parse } from "@libs/xml";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
@@ -52,6 +53,41 @@ describe("generate-feed tests", () => {
   });
 
   describe("generateFeed", () => {
+    it("should build feed options from the configured server URL", () => {
+      const options = createFeedOptions();
+
+      expect(options.feedUrl).toBe(`${serverUrl()}/rss.xml`);
+      expect(options.imageUrl).toBe(`${serverUrl()}/cover.jpg`);
+      expect(options.itunesImage).toBe(`${serverUrl()}/cover.jpg`);
+    });
+
+    it("should build audio URLs consistently", () => {
+      expect(getAudioUrl("video123")).toBe(`${serverUrl()}/files/video123.mp3`);
+    });
+
+    it("should create feed items without enclosure in test mode", () => {
+      const item = createFeedItem(mockVideos[0], false);
+
+      expect(item).toMatchObject({
+        title: mockVideos[0].video_name,
+        description: mockVideos[0].video_description,
+        url: getAudioUrl(mockVideos[0].video_id),
+        guid: mockVideos[0].video_id,
+        itunesDuration: mockVideos[0].video_length,
+      });
+      expect(item.enclosure).toBeUndefined();
+    });
+
+    it("should create feed items with enclosure for production mode", () => {
+      const item = createFeedItem(mockVideos[0], true);
+
+      expect(item.enclosure).toEqual({
+        url: getAudioUrl(mockVideos[0].video_id),
+        file: mockVideos[0].video_path,
+        type: "audio/mp3",
+      });
+    });
+
     it("should have correct RSS channel metadata", async () => {
       const xmlContent = await Bun.file(rssFile()).text();
       const doc = parse(xmlContent) as unknown as RSSDoc;
@@ -265,6 +301,46 @@ describe("generate-feed tests", () => {
 
       // Check durations (podcast library may format differently)
       expect(xmlContent).toContain("<itunes:duration>");
+    });
+
+    it("should not include audio enclosure tags in test mode", async () => {
+      await generateFeed([mockVideos[0]]);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+
+      expect(xmlContent).not.toContain("<enclosure");
+      expect(xmlContent).toContain(`<link>${serverUrl()}/files/${mockVideos[0].video_id}.mp3</link>`);
+    });
+
+    it("should keep RSS items in the input order", async () => {
+      await generateFeed(mockVideos);
+
+      const xmlContent = await Bun.file(rssFile()).text();
+      const firstIndex = xmlContent.indexOf(mockVideos[0].video_id);
+      const secondIndex = xmlContent.indexOf(mockVideos[1].video_id);
+
+      expect(firstIndex).toBeGreaterThan(-1);
+      expect(secondIndex).toBeGreaterThan(-1);
+      expect(firstIndex).toBeLessThan(secondIndex);
+    });
+
+    it("should accept injected storage without uploading in test mode", async () => {
+      let uploadRssCalls = 0;
+      let ensureCoverImageCalls = 0;
+      const storage: Storage = {
+        async uploadAudio(): Promise<void> {},
+        async uploadRss(): Promise<void> {
+          uploadRssCalls += 1;
+        },
+        async ensureCoverImage(): Promise<void> {
+          ensureCoverImageCalls += 1;
+        },
+      };
+
+      await generateFeed([mockVideos[0]], { storage });
+
+      expect(uploadRssCalls).toBe(0);
+      expect(ensureCoverImageCalls).toBe(0);
     });
   });
 

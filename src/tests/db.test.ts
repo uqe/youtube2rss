@@ -1,5 +1,6 @@
 import {
   addVideoToDb,
+  createDatabaseFactory,
   createDb,
   createVideoRepository,
   dbName,
@@ -12,6 +13,11 @@ import { Database } from "bun:sqlite";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
 
 const testDbFile = "youtube2rss.test.db";
+const customDbFile = "./src/tests/data/youtube2rss.custom.test.db";
+const silentLogger = {
+  info(): void {},
+  success(): void {},
+};
 
 describe("db tests", () => {
   beforeAll(async () => {
@@ -259,13 +265,30 @@ describe("db tests", () => {
       expect(isVideoExists("testid")).toBe(false);
       expect(isVideoExists("TESTID")).toBe(false);
     });
+
+    it("should treat SQL-like video IDs as plain values", async () => {
+      const videoId = "' OR 1=1 --";
+
+      await addVideoToDb(
+        videoId,
+        "SQL-like ID",
+        null,
+        "https://example.com/sql-like",
+        "2022-01-01",
+        "/path/to/sql-like.mp4",
+        100
+      );
+
+      expect(isVideoExists(videoId)).toBe(true);
+      expect(isVideoExists("' OR 1=1")).toBe(false);
+    });
   });
 
   describe("createDb", () => {
     it("createDb should create a database file if it does not exist", async () => {
       try {
         await Bun.file(dbName()).delete();
-      } catch (_) {
+      } catch {
         // ignore if file doesn't exist
       }
       await createDb();
@@ -296,6 +319,45 @@ describe("db tests", () => {
       const expected = "youtube2rss.test.db";
       const actual = dbName();
       expect(actual).toBe(expected);
+    });
+  });
+
+  describe("createDatabaseFactory", () => {
+    afterEach(async () => {
+      await Bun.file(customDbFile)
+        .delete()
+        .catch(() => {});
+    });
+
+    it("should create repositories isolated by database factory", async () => {
+      await Bun.file(customDbFile)
+        .delete()
+        .catch(() => {});
+
+      const dbFactory = createDatabaseFactory(() => customDbFile);
+      await createDb({
+        dbFactory,
+        isTestEnvironment: () => true,
+        log: silentLogger,
+      });
+
+      const customRepository = createVideoRepository({ dbFactory });
+      const defaultRepository = createVideoRepository();
+      const video: Video = {
+        video_id: "customDbVideo",
+        video_name: "Custom DB Video",
+        video_description: null,
+        video_url: "https://example.com/custom",
+        video_added_date: "2026-01-01",
+        video_path: "/path/custom.mp4",
+        video_length: 321,
+      };
+
+      customRepository.create(video);
+
+      expect(customRepository.exists("customDbVideo")).toBe(true);
+      expect(customRepository.list()).toEqual([video]);
+      expect(defaultRepository.exists("customDbVideo")).toBe(false);
     });
   });
 
@@ -402,6 +464,33 @@ describe("db tests", () => {
       // Both repositories should see the same data
       expect(repo2.exists("sharedDb")).toBe(true);
       expect(repo2.list().length).toBe(1);
+    });
+
+    it("separate repositories should preserve insertion order when listing", () => {
+      const repo = createVideoRepository();
+      const firstVideo: Video = {
+        video_id: "ordered1",
+        video_name: "Ordered 1",
+        video_description: null,
+        video_url: "https://example.com/ordered1",
+        video_added_date: "2022-01-01",
+        video_path: "/path/ordered1.mp4",
+        video_length: 100,
+      };
+      const secondVideo: Video = {
+        video_id: "ordered2",
+        video_name: "Ordered 2",
+        video_description: null,
+        video_url: "https://example.com/ordered2",
+        video_added_date: "2022-01-02",
+        video_path: "/path/ordered2.mp4",
+        video_length: 200,
+      };
+
+      repo.create(firstVideo);
+      repo.create(secondVideo);
+
+      expect(repo.list().map((video) => video.video_id)).toEqual(["ordered1", "ordered2"]);
     });
   });
 });

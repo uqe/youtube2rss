@@ -1,8 +1,41 @@
-import { getOptimalCacheControl, mimeTypes, parseRangeHeader, serverHandler } from "../serve.ts";
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import {
+  createEtag,
+  createServer,
+  createStaticFileHandler,
+  getContentType,
+  getOptimalCacheControl,
+  mimeTypes,
+  parseRangeHeader,
+  resolveSafePath,
+  serverHandler,
+} from "../serve.ts";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
+import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 
+const testPublicDir = "./src/tests/data/static-public";
+const testPublicPath = resolve(testPublicDir);
+const silentLogger = {
+  debug(): void {},
+  info(): void {},
+  warn(): void {},
+  error(): void {},
+};
+
 describe("serve tests", () => {
+  beforeAll(async () => {
+    await mkdir(testPublicDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(testPublicDir, { recursive: true, force: true });
+    await mkdir(testPublicDir, { recursive: true });
+  });
+
+  afterAll(async () => {
+    await rm(testPublicDir, { recursive: true, force: true });
+  });
+
   describe("mimeTypes", () => {
     it("should have correct MIME type for mp3", () => {
       expect(mimeTypes[".mp3"]).toBe("audio/mpeg");
@@ -59,6 +92,23 @@ describe("serve tests", () => {
     });
   });
 
+  describe("getContentType", () => {
+    it("should detect content type case-insensitively", () => {
+      expect(getContentType("/tmp/audio.MP3")).toBe("audio/mpeg");
+      expect(getContentType("/tmp/feed.XML")).toBe("application/xml");
+    });
+
+    it("should fall back to application/octet-stream", () => {
+      expect(getContentType("/tmp/file.unknown")).toBe("application/octet-stream");
+    });
+  });
+
+  describe("createEtag", () => {
+    it("should build weak ETag from size and mtime", () => {
+      expect(createEtag({ size: 255, mtime: new Date(16) })).toBe('W/"ff-10"');
+    });
+  });
+
   describe("parseRangeHeader", () => {
     const fileSize = 1000;
 
@@ -108,15 +158,62 @@ describe("serve tests", () => {
     });
   });
 
-  describe("serverHandler", () => {
-    const testFilePath = "./public/index.html";
-    let testFileExists = false;
+  describe("resolveSafePath", () => {
+    it("should resolve root to index.html inside base path", () => {
+      const result = resolveSafePath("/", testPublicPath);
 
-    beforeAll(async () => {
-      // Проверяем существование тестовых файлов
-      testFileExists = await Bun.file(testFilePath).exists();
+      expect(result.safePath).toBe("/index.html");
+      expect(result.filePath).toBe(resolve(testPublicPath, "index.html"));
+      expect(result.isInsideBasePath).toBe(true);
     });
 
+    it("should keep resolved path inside base path for traversal input", () => {
+      const result = resolveSafePath("/../../../etc/passwd", testPublicPath);
+
+      expect(result.filePath.startsWith(testPublicPath)).toBe(true);
+      expect(result.isInsideBasePath).toBe(true);
+    });
+  });
+
+  describe("createStaticFileHandler", () => {
+    it("should serve files from a custom base path", async () => {
+      await Bun.write(`${testPublicDir}/custom.html`, "<html>custom</html>");
+      const handler = createStaticFileHandler({
+        basePath: testPublicPath,
+        logLevel: "error",
+        log: silentLogger,
+      });
+
+      const response = await handler(new Request("http://localhost/custom.html"));
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("text/html");
+      expect(await response.text()).toBe("<html>custom</html>");
+    });
+  });
+
+  describe("createServer", () => {
+    it("should pass basePath to the default static file handler", async () => {
+      await Bun.write(`${testPublicDir}/server.html`, "<html>server</html>");
+      const server = createServer({
+        port: 0,
+        basePath: testPublicPath,
+        logLevel: "error",
+        log: silentLogger,
+      });
+
+      try {
+        const response = await fetch(new URL("/server.html", server.url));
+
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe("<html>server</html>");
+      } finally {
+        server.stop(true);
+      }
+    });
+  });
+
+  describe("serverHandler", () => {
     describe("HTTP methods", () => {
       it("should return 405 for POST method", async () => {
         const req = new Request("http://localhost/test.html", { method: "POST" });
@@ -191,6 +288,58 @@ describe("serve tests", () => {
         const response = await serverHandler(req);
 
         expect(response.status).toBe(404);
+      });
+
+      it("should return headers without body for an existing file", async () => {
+        const testFile = "./public/test-head.html";
+        await Bun.write(testFile, "<html>head</html>");
+
+        const req = new Request("http://localhost/test-head.html", { method: "HEAD" });
+        const response = await serverHandler(req);
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Type")).toBe("text/html");
+        expect(await response.text()).toBe("");
+
+        await Bun.file(testFile).delete();
+      });
+    });
+
+    describe("Range requests", () => {
+      it("should return partial content for valid audio range requests", async () => {
+        const testFile = "./public/test-range.mp3";
+        await Bun.write(testFile, "0123456789");
+
+        const req = new Request("http://localhost/test-range.mp3", {
+          method: "GET",
+          headers: { Range: "bytes=2-5" },
+        });
+        const response = await serverHandler(req);
+
+        expect(response.status).toBe(206);
+        expect(response.headers.get("Content-Range")).toBe("bytes 2-5/10");
+        expect(response.headers.get("Content-Length")).toBe("4");
+        expect(response.headers.get("Accept-Ranges")).toBe("bytes");
+        expect(await response.text()).toBe("2345");
+
+        await Bun.file(testFile).delete();
+      });
+
+      it("should ignore range headers for non-audio files", async () => {
+        const testFile = "./public/test-range.html";
+        await Bun.write(testFile, "0123456789");
+
+        const req = new Request("http://localhost/test-range.html", {
+          method: "GET",
+          headers: { Range: "bytes=2-5" },
+        });
+        const response = await serverHandler(req);
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Range")).toBeNull();
+        expect(await response.text()).toBe("0123456789");
+
+        await Bun.file(testFile).delete();
       });
     });
 

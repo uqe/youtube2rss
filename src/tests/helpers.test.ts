@@ -1,4 +1,4 @@
-import { formatSeconds, getFilePath, getYoutubeVideoId, isS3Configured } from "../helpers.ts";
+import { formatSeconds, getFilePath, getYoutubeVideoId, getYoutubeVideoUrl, isS3Configured } from "../helpers.ts";
 import { describe, expect, it } from "bun:test";
 
 describe("helpers tests", () => {
@@ -22,9 +22,11 @@ describe("helpers tests", () => {
 
       const validUrls = [
         `https://www.youtube.com/watch?v=${id}`,
+        `https://m.youtube.com/watch?v=${id}`,
         `https://youtu.be/${id}`,
         `https://www.youtube.com/v/${id}`,
         `https://www.youtube.com/shorts/${id}`,
+        `https://www.youtube.com/embed/${id}`,
         `https://youtu.be/${id}?t=95`,
       ];
 
@@ -84,6 +86,29 @@ describe("helpers tests", () => {
       const id = "dQw4w9WgXcQ";
       expect(getYoutubeVideoId(`https://www.youtube.com/watch?feature=share&v=${id}`)).toBe(id);
     });
+
+    it("should return the first URL video ID from a message", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`watch this https://youtu.be/${id} please`)).toBe(id);
+      expect(getYoutubeVideoId(`https://youtu.be/${id} and then text`)).toBe(id);
+    });
+
+    it("should ignore unsupported URLs before the first valid YouTube URL", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`https://example.com/video then https://youtube.com/watch?v=${id}`)).toBe(id);
+    });
+
+    it("should handle trailing punctuation after URLs", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`watch https://youtu.be/${id}.`)).toBe(id);
+      expect(getYoutubeVideoId(`watch (https://youtu.be/${id})`)).toBe(id);
+    });
+
+    it("should ignore non-YouTube hosts that contain youtube.com in the domain", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`https://notyoutube.com/watch?v=${id}`)).toBeNull();
+      expect(getYoutubeVideoId(`https://youtube.com.evil.test/watch?v=${id}`)).toBeNull();
+    });
   });
 
   describe("isS3Configured", () => {
@@ -114,6 +139,12 @@ describe("helpers tests", () => {
       Bun.env.S3_ENDPOINT = "";
       Bun.env.S3_BUCKET = "";
       Bun.env.S3_ACCESS_KEY = "";
+    });
+  });
+
+  describe("getYoutubeVideoUrl", () => {
+    it("should build canonical YouTube watch URL", () => {
+      expect(getYoutubeVideoUrl("dQw4w9WgXcQ")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
     });
   });
 
@@ -193,9 +224,21 @@ describe("helpers tests", () => {
       expect(getFilePath(specialId, "mp3")).toBe(`./src/tests/data/${specialId}.mp3`);
     });
 
-    it("should handle empty videoId", () => {
+    it("should reject empty videoId", () => {
       Bun.env.IS_TEST = "true";
-      expect(getFilePath("", "mp3")).toBe("./src/tests/data/.mp3");
+      expect(() => getFilePath("", "mp3")).toThrow("Invalid video ID for file path");
+    });
+
+    it("should reject path separators inside videoId", () => {
+      Bun.env.IS_TEST = "true";
+      expect(() => getFilePath("nested/video", "mp4")).toThrow("Invalid video ID for file path");
+      expect(() => getFilePath("nested\\video", "mp4")).toThrow("Invalid video ID for file path");
+    });
+
+    it("should reject dot path segments", () => {
+      Bun.env.IS_TEST = "true";
+      expect(() => getFilePath(".", "mp3")).toThrow("Invalid video ID for file path");
+      expect(() => getFilePath("..", "mp3")).toThrow("Invalid video ID for file path");
     });
   });
 });

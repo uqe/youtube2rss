@@ -7,21 +7,29 @@ export interface Storage {
   ensureCoverImage(): Promise<void>;
 }
 
-const createLocalStorage = (): Storage => ({
+export interface StorageFactoryOptions {
+  isRemoteConfigured?: () => boolean;
+  createRemoteStorage?: () => Storage;
+}
+
+export const createLocalStorage = (): Storage => ({
   async uploadAudio(): Promise<void> {},
   async uploadRss(): Promise<void> {},
   async ensureCoverImage(): Promise<void> {},
 });
 
+export const createStorage = ({
+  isRemoteConfigured = isS3Configured,
+  createRemoteStorage = createS3Storage,
+}: StorageFactoryOptions = {}): Storage => {
+  return isRemoteConfigured() ? createRemoteStorage() : createLocalStorage();
+};
+
 let storageInstance: Storage | null = null;
 
 export const getStorage = (): Storage => {
   if (!storageInstance) {
-    storageInstance = isS3Configured() ? createS3Storage() : createLocalStorage();
-  }
-
-  if (!storageInstance) {
-    throw new Error("Storage is not initialized");
+    storageInstance = createStorage();
   }
 
   return storageInstance;
