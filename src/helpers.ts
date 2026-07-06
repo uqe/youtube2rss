@@ -1,4 +1,4 @@
-import { getFilesDir, isS3Configured as isS3ConfiguredConfig } from "./config.ts";
+import { getFilesDir, getYoutubeDlAuthOptions, isS3Configured as isS3ConfiguredConfig } from "./config.ts";
 import youtubedl, { type Payload } from "youtube-dl-exec";
 
 const videoIdPattern = /^[a-zA-Z0-9_-]{11,}$/;
@@ -82,7 +82,7 @@ export const getVideoInfo = async (videoId: string): Promise<Payload> => {
     noCheckCertificates: true,
     noWarnings: true,
     preferFreeFormats: true,
-    cookies: "./cookies.txt",
+    ...getYoutubeDlAuthOptions(),
     addHeader: ["referer:youtube.com", "user-agent:googlebot"],
   });
 

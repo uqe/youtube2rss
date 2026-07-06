@@ -6,6 +6,9 @@ youtube2rss.test.db
 public/files/*
 public/rss.xml
 
+# Cookies file
+cookies.txt
+
 # Exception to the rule
 !public/files/.gitkeep
 

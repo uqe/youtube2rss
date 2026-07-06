@@ -10,6 +10,8 @@ import {
   getS3Config,
   getServerUrl,
   getTelegramWhitelist,
+  getYoutubeDlAuthOptions,
+  getYoutubeDownloadTimeoutMs,
   isS3Configured,
   isTestEnv,
   parseInteger,
@@ -34,6 +36,10 @@ describe("config tests", () => {
     originalEnv.PORT = Bun.env.PORT;
     originalEnv.LOG_LEVEL = Bun.env.LOG_LEVEL;
     originalEnv.TELEGRAM_WHITELIST = Bun.env.TELEGRAM_WHITELIST;
+    originalEnv.YOUTUBE_COOKIES_FROM_BROWSER = Bun.env.YOUTUBE_COOKIES_FROM_BROWSER;
+    originalEnv.YOUTUBE_COOKIES_PATH = Bun.env.YOUTUBE_COOKIES_PATH;
+    originalEnv.YOUTUBE_DOWNLOAD_TIMEOUT_MS = Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS;
+    originalEnv.YOUTUBE_EXTRACTOR_ARGS = Bun.env.YOUTUBE_EXTRACTOR_ARGS;
   });
 
   afterEach(() => {
@@ -48,6 +54,10 @@ describe("config tests", () => {
     Bun.env.PORT = originalEnv.PORT;
     Bun.env.LOG_LEVEL = originalEnv.LOG_LEVEL;
     Bun.env.TELEGRAM_WHITELIST = originalEnv.TELEGRAM_WHITELIST;
+    Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = originalEnv.YOUTUBE_COOKIES_FROM_BROWSER;
+    Bun.env.YOUTUBE_COOKIES_PATH = originalEnv.YOUTUBE_COOKIES_PATH;
+    Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS = originalEnv.YOUTUBE_DOWNLOAD_TIMEOUT_MS;
+    Bun.env.YOUTUBE_EXTRACTOR_ARGS = originalEnv.YOUTUBE_EXTRACTOR_ARGS;
   });
 
   describe("isTestEnv", () => {
@@ -310,6 +320,56 @@ describe("config tests", () => {
     it("should reject PORT values with trailing text", () => {
       Bun.env.PORT = "8080abc";
       expect(getPort()).toBeNaN();
+    });
+  });
+
+  describe("getYoutubeDownloadTimeoutMs", () => {
+    it("should return default timeout when YOUTUBE_DOWNLOAD_TIMEOUT_MS is not set", () => {
+      Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS = undefined;
+      expect(getYoutubeDownloadTimeoutMs()).toBe(1800000);
+    });
+
+    it("should return configured timeout", () => {
+      Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS = "250000";
+      expect(getYoutubeDownloadTimeoutMs()).toBe(250000);
+    });
+
+    it("should throw when YOUTUBE_DOWNLOAD_TIMEOUT_MS is invalid", () => {
+      Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS = "invalid";
+      expect(() => getYoutubeDownloadTimeoutMs()).toThrow("YOUTUBE_DOWNLOAD_TIMEOUT_MS must be a positive integer");
+    });
+
+    it("should throw when YOUTUBE_DOWNLOAD_TIMEOUT_MS is not positive", () => {
+      Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS = "0";
+      expect(() => getYoutubeDownloadTimeoutMs()).toThrow("YOUTUBE_DOWNLOAD_TIMEOUT_MS must be a positive integer");
+    });
+  });
+
+  describe("getYoutubeDlAuthOptions", () => {
+    it("should use cookies.txt by default", () => {
+      Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = undefined;
+      Bun.env.YOUTUBE_COOKIES_PATH = undefined;
+      Bun.env.YOUTUBE_EXTRACTOR_ARGS = undefined;
+
+      expect(getYoutubeDlAuthOptions()).toEqual({ cookies: "./cookies.txt" });
+    });
+
+    it("should use configured cookies path", () => {
+      Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = undefined;
+      Bun.env.YOUTUBE_COOKIES_PATH = "./private/cookies.txt";
+
+      expect(getYoutubeDlAuthOptions()).toEqual({ cookies: "./private/cookies.txt" });
+    });
+
+    it("should prefer browser cookies and include extractor args", () => {
+      Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = "chrome";
+      Bun.env.YOUTUBE_COOKIES_PATH = "./private/cookies.txt";
+      Bun.env.YOUTUBE_EXTRACTOR_ARGS = "youtube:formats=missing_pot";
+
+      expect(getYoutubeDlAuthOptions()).toEqual({
+        cookiesFromBrowser: "chrome",
+        extractorArgs: "youtube:formats=missing_pot",
+      });
     });
   });
 

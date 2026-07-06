@@ -8,6 +8,47 @@ export const getFilesDir = () => (isTestEnv() ? "./src/tests/data" : "./public/f
 
 export const getDbFileName = () => (isTestEnv() ? "youtube2rss.test.db" : "youtube2rss.db");
 
+export const defaultYoutubeDownloadTimeoutMs = 30 * 60 * 1000;
+
+export interface YoutubeDlAuthOptions {
+  cookies?: string;
+  cookiesFromBrowser?: string;
+  extractorArgs?: string;
+}
+
+const getOptionalEnv = (name: string) => {
+  const value = Bun.env[name]?.trim();
+  return value ? value : undefined;
+};
+
+export const getYoutubeDownloadTimeoutMs = () => {
+  const rawTimeout = Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS;
+
+  if (!rawTimeout) {
+    return defaultYoutubeDownloadTimeoutMs;
+  }
+
+  const timeout = parseInteger(rawTimeout);
+
+  if (Number.isNaN(timeout) || timeout <= 0) {
+    throw new Error("YOUTUBE_DOWNLOAD_TIMEOUT_MS must be a positive integer");
+  }
+
+  return timeout;
+};
+
+export const getYoutubeDlAuthOptions = (): YoutubeDlAuthOptions => {
+  const cookiesFromBrowser = getOptionalEnv("YOUTUBE_COOKIES_FROM_BROWSER");
+  const extractorArgs = getOptionalEnv("YOUTUBE_EXTRACTOR_ARGS");
+
+  return {
+    ...(cookiesFromBrowser
+      ? { cookiesFromBrowser }
+      : { cookies: getOptionalEnv("YOUTUBE_COOKIES_PATH") ?? "./cookies.txt" }),
+    ...(extractorArgs ? { extractorArgs } : {}),
+  };
+};
+
 export const getS3Config = () => ({
   endpoint: Bun.env.S3_ENDPOINT,
   bucket: Bun.env.S3_BUCKET,

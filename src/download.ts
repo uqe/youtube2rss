@@ -1,4 +1,4 @@
-import { isTestEnv } from "./config.ts";
+import { getYoutubeDlAuthOptions, getYoutubeDownloadTimeoutMs, isTestEnv } from "./config.ts";
 import { videoRepository } from "./db.ts";
 import { generateFeed } from "./generate-feed.ts";
 import { getFilePath, getVideoInfo, getYoutubeVideoUrl } from "./helpers.ts";
@@ -38,11 +38,15 @@ export interface DownloadDependencies {
   logger: DownloadLogger;
 }
 
-export const createAudioDownloader = (executor: YoutubeDlExecutor = youtubedl) => {
+export const createAudioDownloader = (
+  executor: YoutubeDlExecutor = youtubedl,
+  timeoutMs = getYoutubeDownloadTimeoutMs()
+) => {
   return async (videoId: string, outputFilePath: string) => {
     await executor.exec(
       getYoutubeVideoUrl(videoId),
       {
+        format: "bestaudio[ext=m4a]/bestaudio/best",
         extractAudio: true,
         audioFormat: "mp3",
         noCheckCertificates: true,
@@ -50,12 +54,12 @@ export const createAudioDownloader = (executor: YoutubeDlExecutor = youtubedl) =
         output: outputFilePath,
         preferFreeFormats: true,
         writeInfoJson: false,
-        cookies: "./cookies.txt",
+        ...getYoutubeDlAuthOptions(),
         quiet: false,
         embedThumbnail: true,
         // addHeader: ["referer:youtube.com", "user-agent:googlebot"],
       },
-      { timeout: 100000, killSignal: "SIGKILL" }
+      { timeout: timeoutMs, killSignal: "SIGKILL" }
     );
   };
 };

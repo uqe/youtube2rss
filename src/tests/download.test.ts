@@ -96,7 +96,21 @@ afterEach(async () => {
 });
 
 describe("download tests", () => {
+  const originalYoutubeCookiesFromBrowser = Bun.env.YOUTUBE_COOKIES_FROM_BROWSER;
+  const originalYoutubeCookiesPath = Bun.env.YOUTUBE_COOKIES_PATH;
+  const originalYoutubeExtractorArgs = Bun.env.YOUTUBE_EXTRACTOR_ARGS;
+
+  afterEach(() => {
+    Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = originalYoutubeCookiesFromBrowser;
+    Bun.env.YOUTUBE_COOKIES_PATH = originalYoutubeCookiesPath;
+    Bun.env.YOUTUBE_EXTRACTOR_ARGS = originalYoutubeExtractorArgs;
+  });
+
   it("createAudioDownloader should call youtube-dl with canonical URL and output path", async () => {
+    Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = undefined;
+    Bun.env.YOUTUBE_COOKIES_PATH = undefined;
+    Bun.env.YOUTUBE_EXTRACTOR_ARGS = undefined;
+
     const calls: Array<{
       url: string;
       options: Record<string, unknown>;
@@ -113,13 +127,54 @@ describe("download tests", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
     expect(calls[0].options).toMatchObject({
+      format: "bestaudio[ext=m4a]/bestaudio/best",
       extractAudio: true,
       audioFormat: "mp3",
       output: "/tmp/audio.mp3",
       cookies: "./cookies.txt",
       embedThumbnail: true,
     });
-    expect(calls[0].executionOptions).toEqual({ timeout: 100000, killSignal: "SIGKILL" });
+    expect(calls[0].executionOptions).toEqual({ timeout: 1800000, killSignal: "SIGKILL" });
+  });
+
+  it("createAudioDownloader should pass browser cookies and extractor args", async () => {
+    Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = "chrome";
+    Bun.env.YOUTUBE_EXTRACTOR_ARGS = "youtube:formats=missing_pot";
+
+    const calls: Array<{
+      options: Record<string, unknown>;
+    }> = [];
+    const downloadAudio = createAudioDownloader({
+      async exec(_url, options): Promise<void> {
+        calls.push({ options });
+      },
+    });
+
+    await downloadAudio("dQw4w9WgXcQ", "/tmp/audio.mp3");
+
+    expect(calls[0].options).toMatchObject({
+      cookiesFromBrowser: "chrome",
+      extractorArgs: "youtube:formats=missing_pot",
+    });
+    expect(calls[0].options).not.toHaveProperty("cookies");
+  });
+
+  it("createAudioDownloader should accept a custom timeout", async () => {
+    const calls: Array<{
+      executionOptions: Record<string, unknown>;
+    }> = [];
+    const downloadAudio = createAudioDownloader(
+      {
+        async exec(_url, _options, executionOptions): Promise<void> {
+          calls.push({ executionOptions });
+        },
+      },
+      250000
+    );
+
+    await downloadAudio("dQw4w9WgXcQ", "/tmp/audio.mp3");
+
+    expect(calls[0].executionOptions).toEqual({ timeout: 250000, killSignal: "SIGKILL" });
   });
 
   it("createVideoFromInfo should map video info to database record", () => {
