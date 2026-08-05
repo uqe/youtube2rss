@@ -6,6 +6,7 @@ import {
   dbName,
   getAllVideos,
   isVideoExists,
+  latestDatabaseVersion,
   videoRepository,
 } from "../db.ts";
 import type { Video } from "../types.ts";
@@ -312,6 +313,42 @@ describe("db tests", () => {
       expect(videos.length).toBe(1);
       expect(videos[0].video_id).toBe("dupTest");
     });
+
+    it("should migrate a legacy database and preserve its videos", async () => {
+      await Bun.file(customDbFile)
+        .delete()
+        .catch(() => {});
+      const legacyDb = new Database(customDbFile, { create: true });
+      legacyDb.run(`
+        CREATE TABLE videos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          video_id TEXT,
+          video_name TEXT,
+          video_description TEXT,
+          video_url TEXT,
+          video_added_date TEXT,
+          video_path TEXT,
+          video_length INTEGER
+        )
+      `);
+      legacyDb.run(
+        "INSERT INTO videos (video_id, video_name, video_description, video_url, video_added_date, video_path, video_length) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ["legacyVideo", "Legacy", null, "https://example.com/legacy", "2022-01-01", "/legacy.mp3", 100]
+      );
+      legacyDb.close();
+
+      const dbFactory = createDatabaseFactory(() => customDbFile);
+      await createDb({ dbFactory, isTestEnvironment: () => true, log: silentLogger });
+
+      const migratedDb = new Database(customDbFile, { readonly: true });
+      const version = migratedDb.query("PRAGMA user_version").get() as { user_version: number };
+      migratedDb.close();
+      const repository = createVideoRepository({ dbFactory });
+
+      expect(version.user_version).toBe(latestDatabaseVersion);
+      expect(repository.list().map((video) => video.video_id)).toEqual(["legacyVideo"]);
+      expect(repository.getPublicationStatus("legacyVideo")).toBe("published");
+    });
   });
 
   describe("dbName", () => {
@@ -367,6 +404,8 @@ describe("db tests", () => {
       expect(typeof videoRepository.create).toBe("function");
       expect(typeof videoRepository.list).toBe("function");
       expect(typeof videoRepository.exists).toBe("function");
+      expect(typeof videoRepository.getPublicationStatus).toBe("function");
+      expect(typeof videoRepository.markPublished).toBe("function");
     });
 
     it("create should add video using Video object", () => {
@@ -433,6 +472,41 @@ describe("db tests", () => {
       expect(videoRepository.exists("existsTest")).toBe(true);
       expect(videoRepository.exists("nonExistent")).toBe(false);
     });
+
+    it("should track publication status", () => {
+      const video: Video = {
+        video_id: "pendingVideo",
+        video_name: "Pending Video",
+        video_description: null,
+        video_url: "https://example.com/pending",
+        video_added_date: "2026-01-01",
+        video_path: "/path/pending.mp3",
+        video_length: 100,
+      };
+
+      videoRepository.create(video, "pending");
+      expect(videoRepository.getPublicationStatus(video.video_id)).toBe("pending");
+
+      videoRepository.markPublished(video.video_id);
+      expect(videoRepository.getPublicationStatus(video.video_id)).toBe("published");
+    });
+
+    it("should reject duplicate video IDs", () => {
+      const video: Video = {
+        video_id: "uniqueVideo",
+        video_name: "Unique Video",
+        video_description: null,
+        video_url: "https://example.com/unique",
+        video_added_date: "2026-01-01",
+        video_path: "/path/unique.mp3",
+        video_length: 100,
+      };
+
+      videoRepository.create(video);
+
+      expect(() => videoRepository.create(video)).toThrow();
+      expect(videoRepository.list()).toHaveLength(1);
+    });
   });
 
   describe("createVideoRepository", () => {
@@ -443,6 +517,8 @@ describe("db tests", () => {
       expect(typeof repo.create).toBe("function");
       expect(typeof repo.list).toBe("function");
       expect(typeof repo.exists).toBe("function");
+      expect(typeof repo.getPublicationStatus).toBe("function");
+      expect(typeof repo.markPublished).toBe("function");
     });
 
     it("new repository should share the same database", () => {

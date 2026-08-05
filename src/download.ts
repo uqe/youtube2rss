@@ -1,5 +1,6 @@
-import { getYoutubeDlAuthOptions, getYoutubeDownloadTimeoutMs, isTestEnv } from "./config.ts";
+import { getYoutubeDlAuthOptions, getYoutubeDownloadTimeoutMs } from "./config.ts";
 import { videoRepository } from "./db.ts";
+import type { PublicationStatus } from "./db.ts";
 import { generateFeed } from "./generate-feed.ts";
 import { getFilePath, getVideoInfo, getYoutubeVideoUrl } from "./helpers.ts";
 import { logger } from "./logger.ts";
@@ -9,9 +10,10 @@ import type { Message } from "grammy/types";
 import youtubedl, { type Payload } from "youtube-dl-exec";
 
 interface DownloadRepository {
-  create(video: Video): void;
+  create(video: Video, publicationStatus?: PublicationStatus): void;
   list(): Video[];
-  exists(videoId: string): boolean;
+  getPublicationStatus(videoId: string): PublicationStatus | null;
+  markPublished(videoId: string): void;
 }
 
 interface DownloadLogger {
@@ -33,10 +35,26 @@ export interface DownloadDependencies {
   generateFeed(videos: Video[]): Promise<void>;
   getFilePath(videoId: string, format: "mp3" | "mp4"): string;
   getStorage(): Storage;
-  isTestEnv(): boolean;
+  deleteFile(filePath: string): Promise<void>;
   now(): Date;
   logger: DownloadLogger;
 }
+
+export type DownloadResult =
+  | { status: "published" }
+  | { status: "already-published" }
+  | { status: "recovered" }
+  | { status: "failed" };
+
+type ProcessingStage =
+  | "lookup"
+  | "download"
+  | "validate"
+  | "metadata"
+  | "upload-audio"
+  | "persist"
+  | "publish-feed"
+  | "notify";
 
 export const createAudioDownloader = (
   executor: YoutubeDlExecutor = youtubedl,
@@ -76,12 +94,35 @@ export const createVideoFromInfo = (info: Payload, outputFilePath: string, added
   video_length: info.duration,
 });
 
-const saveVideoInfo = async (repository: DownloadRepository, info: Payload, outputFilePath: string, addedAt: Date) => {
-  repository.create(createVideoFromInfo(info, outputFilePath, addedAt));
-};
-
 const refreshFeed = async (repository: DownloadRepository, feedGenerator: (videos: Video[]) => Promise<void>) => {
   await feedGenerator(repository.list());
+};
+
+const deleteFile = async (filePath: string) => {
+  const file = Bun.file(filePath);
+  if (await file.exists()) {
+    await file.delete();
+  }
+};
+
+const formatError = (error: unknown) => (error instanceof Error ? `${error.name}: ${error.message}` : String(error));
+
+const formatLogEvent = (event: string, videoId: string, stage: ProcessingStage, error?: unknown) =>
+  JSON.stringify({
+    event,
+    videoId,
+    stage,
+    ...(error === undefined ? {} : { error: formatError(error) }),
+  });
+
+const createSerialTaskQueue = () => {
+  let tail: Promise<unknown> = Promise.resolve();
+
+  return <T>(task: () => Promise<T>): Promise<T> => {
+    const result = tail.then(task, task);
+    tail = result.catch(() => undefined);
+    return result;
+  };
 };
 
 const defaultDependencies: DownloadDependencies = {
@@ -91,57 +132,118 @@ const defaultDependencies: DownloadDependencies = {
   generateFeed,
   getFilePath,
   getStorage,
-  isTestEnv,
+  deleteFile,
   now: () => new Date(),
   logger,
 };
 
 export const createDownloader = (dependencies: Partial<DownloadDependencies> = {}) => {
   const deps = { ...defaultDependencies, ...dependencies };
+  const enqueue = createSerialTaskQueue();
 
-  return async (videoId: string, handler?: ReplyHandler) => {
-    const outputFilePath = deps.getFilePath(videoId, "mp3");
+  const processVideo = async (videoId: string): Promise<DownloadResult> => {
+    let outputFilePath: string | undefined;
+    let isPersisted = false;
+    let stage: ProcessingStage = "lookup";
 
     try {
-      if (deps.repository.exists(videoId)) {
-        deps.logger.info("Video already exists");
-        await handler?.("Video already exists. Find it in the RSS feed.");
-        return;
+      const publicationStatus = deps.repository.getPublicationStatus(videoId);
+
+      if (publicationStatus === "published") {
+        deps.logger.info(formatLogEvent("video_already_published", videoId, stage));
+        return { status: "already-published" };
       }
 
-      deps.logger.info("Start downloading");
+      if (publicationStatus === "pending") {
+        stage = "validate";
+        const pendingVideo = deps.repository.list().find((video) => video.video_id === videoId);
+        if (!pendingVideo) {
+          throw new Error(`Pending publication has no database record for video ${videoId}`);
+        }
+
+        const audio = await deps.getStorage().getAudioMetadata(videoId, pendingVideo.video_path);
+        if (!audio.exists || audio.size === 0) {
+          throw new Error(`Pending publication has no usable audio for video ${videoId}`);
+        }
+
+        stage = "publish-feed";
+        deps.logger.info(formatLogEvent("feed_publication_retry", videoId, stage));
+        await refreshFeed(deps.repository, deps.generateFeed);
+        deps.repository.markPublished(videoId);
+        deps.logger.success(formatLogEvent("feed_publication_recovered", videoId, stage));
+        return { status: "recovered" };
+      }
+
+      outputFilePath = deps.getFilePath(videoId, "mp3");
+
+      stage = "download";
+      deps.logger.info(formatLogEvent("video_download_started", videoId, stage));
       await deps.downloadAudio(videoId, outputFilePath);
 
-      deps.logger.success("Downloaded successfully");
+      deps.logger.success(formatLogEvent("video_download_completed", videoId, stage));
 
+      stage = "validate";
       const downloadedFile = Bun.file(outputFilePath);
       const fileExists = await downloadedFile.exists();
       const fileSize = fileExists ? downloadedFile.size : 0;
 
       if (!fileExists || fileSize === 0) {
         const errorMsg = `Downloaded file is ${!fileExists ? "missing" : "empty"}: ${outputFilePath} for video ${videoId}`;
-        deps.logger.error(errorMsg);
+        deps.logger.error(formatLogEvent("downloaded_file_invalid", videoId, stage, errorMsg));
         throw new Error(errorMsg);
       }
 
+      stage = "metadata";
       const info = await deps.getVideoInfo(videoId);
+      stage = "upload-audio";
+      const storage = deps.getStorage();
+      await storage.uploadAudio(videoId, outputFilePath);
 
-      if (!deps.isTestEnv()) {
-        const storage = deps.getStorage();
-        await storage.uploadAudio(videoId, outputFilePath);
+      stage = "persist";
+      deps.repository.create(createVideoFromInfo(info, outputFilePath, deps.now()), "pending");
+      isPersisted = true;
+
+      stage = "publish-feed";
+      deps.logger.info(formatLogEvent("feed_publication_started", videoId, stage));
+      await refreshFeed(deps.repository, deps.generateFeed);
+      deps.repository.markPublished(videoId);
+      deps.logger.success(formatLogEvent("feed_publication_completed", videoId, stage));
+      return { status: "published" };
+    } catch (error) {
+      if (outputFilePath && !isPersisted) {
+        try {
+          await deps.deleteFile(outputFilePath);
+        } catch (cleanupError) {
+          deps.logger.error(formatLogEvent("download_cleanup_failed", videoId, stage, cleanupError));
+        }
       }
 
-      await saveVideoInfo(deps.repository, info, outputFilePath, deps.now());
-
-      deps.logger.info("Start regenerating RSS feed");
-      await refreshFeed(deps.repository, deps.generateFeed);
-      deps.logger.success("Feed regenerated successfully");
-      await handler?.("RSS feed was successfully updated.");
-    } catch (error) {
-      await handler?.("Something went wrong. Please try again later...");
-      deps.logger.error("Download failed");
-      console.error(error);
+      deps.logger.error(formatLogEvent("video_processing_failed", videoId, stage, error));
+      return { status: "failed" };
     }
+  };
+
+  const notify = async (videoId: string, result: DownloadResult, handler?: ReplyHandler) => {
+    if (!handler) return;
+
+    const messages: Record<DownloadResult["status"], string> = {
+      published: "RSS feed was successfully updated.",
+      "already-published": "Video already exists. Find it in the RSS feed.",
+      recovered: "RSS feed publication was successfully recovered.",
+      failed: "Something went wrong. Please try again later...",
+    };
+
+    try {
+      await handler(messages[result.status]);
+    } catch (error) {
+      deps.logger.error(formatLogEvent("download_notification_failed", videoId, "notify", error));
+    }
+  };
+
+  return async (videoId: string, handler?: ReplyHandler) => {
+    const result = await enqueue(() => processVideo(videoId));
+    await notify(videoId, result, handler);
+    return result;
   };
 };
 

@@ -127,14 +127,13 @@ describe("helpers tests", () => {
       Bun.env.S3_SECRET_KEY = "";
     });
 
-    it("isS3Configured returns false when any S3 environment variable is missing", () => {
+    it("isS3Configured rejects a partial S3 configuration", () => {
       Bun.env.S3_ENDPOINT = "example.com";
       Bun.env.S3_BUCKET = "my-bucket";
       Bun.env.S3_ACCESS_KEY = "my-access-key";
       // S3_SECRET_KEY is missing
 
-      const result = isS3Configured();
-      expect(result).toBe(false);
+      expect(() => isS3Configured()).toThrow("Incomplete S3 configuration");
 
       Bun.env.S3_ENDPOINT = "";
       Bun.env.S3_BUCKET = "";

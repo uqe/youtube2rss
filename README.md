@@ -4,7 +4,7 @@ This Telegram bot allows you to turn YouTube videos into podcast feed that you c
 
 The bot is built using `Bun` and uses the [youtube-dl-exec](https://www.npmjs.com/package/) library to download and extract the audio from the YouTube videos. It also uses the [podcast](https://www.npmjs.com/package/podcast) library to generate the RSS feed.
 
-To use the bot, you'll need to set up a Telegram bot and get an API token. You'll also need to have `Bun` and `Node.js` installed.
+To use the bot, you'll need to set up a Telegram bot and get an API token. The only required runtime is `Bun`.
 
 ## Installation
 
@@ -26,9 +26,9 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. You'l
    bun run prepare
    ```
 
-4. Create the `.env` or `.env.dev` file with your Telegram bot token and Server URL (**both are required**) like in the `.env.example` file. Optionally set `TELEGRAM_WHITELIST` (comma-separated Telegram user IDs).
+4. Copy `.env.example` to `.env` or `.env.dev` and fill `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WHITELIST` (comma-separated Telegram user IDs), and `SERVER_URL`. All three values are required. If any S3 variable is set, the complete S3 configuration is required.
 
-5. Start a Teleram bot (**production**):
+5. Start the Telegram bot (**production**):
 
    ```sh
    bun run start
@@ -64,6 +64,33 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. You'l
    bun run serve:dev
    ```
 
+## PM2 usage
+
+Start both production processes:
+
+```sh
+bun run pm2:start
+```
+
+Useful commands:
+
+```sh
+bun run pm2:status
+bun run pm2:logs
+bun run pm2:restart
+bun run pm2:stop
+```
+
+PM2 file watching is disabled so writing MP3 and RSS files cannot restart the application mid-download.
+
+## Development checks
+
+Run formatting, linting, TypeScript validation, and the complete environment-isolated test suite:
+
+```sh
+bun run check
+```
+
 ## S3 file storage usage (optional)
 
 1. Fill env variables: `TELEGRAM_WHITELIST`, `TELEGRAM_BOT_TOKEN`, `SERVER_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_ENDPOINT` and `S3_SECRET_KEY` in the `.env` or `.env.dev` file.
@@ -77,7 +104,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## TODO list
 
 - [x] Update README
-- [ ] Add pm2
-- [ ] Better logging
+- [x] Add pm2
+- [x] Add structured download logging
 - [ ] Add thumbnails podcast episodes
 - [ ] Parse timestamps in video description and add them to the podcast feed

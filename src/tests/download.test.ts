@@ -1,8 +1,9 @@
+import type { PublicationStatus } from "../db.ts";
 import { createAudioDownloader, createDownloader, createVideoFromInfo } from "../download.ts";
 import type { DownloadDependencies } from "../download.ts";
 import type { Storage } from "../storage.ts";
 import type { Video } from "../types.ts";
-import { afterEach, describe, expect, it, spyOn } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 import type { Payload } from "youtube-dl-exec";
 
 const testFiles = new Set<string>();
@@ -19,18 +20,26 @@ const createPayload = (overrides: Partial<Payload> = {}): Payload =>
 
 const createRepository = (initialVideos: Video[] = []) => {
   const videos = [...initialVideos];
+  const publicationStatuses = new Map<string, PublicationStatus>(
+    initialVideos.map((video) => [video.video_id, "published"])
+  );
 
   return {
     videos,
+    publicationStatuses,
     repository: {
-      create(video: Video): void {
+      create(video: Video, publicationStatus: PublicationStatus = "published"): void {
         videos.push(video);
+        publicationStatuses.set(video.video_id, publicationStatus);
       },
       list(): Video[] {
         return videos;
       },
-      exists(videoId: string): boolean {
-        return videos.some((video) => video.video_id === videoId);
+      getPublicationStatus(videoId: string): PublicationStatus | null {
+        return publicationStatuses.get(videoId) ?? null;
+      },
+      markPublished(videoId: string): void {
+        publicationStatuses.set(videoId, "published");
       },
     },
   };
@@ -39,11 +48,15 @@ const createRepository = (initialVideos: Video[] = []) => {
 const createStorage = () => {
   let uploadAudioCalls = 0;
   const storage: Storage = {
+    kind: "local",
     async uploadAudio(): Promise<void> {
       uploadAudioCalls += 1;
     },
     async uploadRss(): Promise<void> {},
     async ensureCoverImage(): Promise<void> {},
+    async getAudioMetadata(): Promise<{ exists: boolean }> {
+      return { exists: true };
+    },
   };
 
   return {
@@ -79,7 +92,11 @@ const createDependencies = (overrides: Partial<DownloadDependencies> = {}): Down
     getStorage(): Storage {
       return storage;
     },
-    isTestEnv: () => true,
+    async deleteFile(filePath: string): Promise<void> {
+      await Bun.file(filePath)
+        .delete()
+        .catch(() => {});
+    },
     now: () => new Date("2026-01-02T03:04:05.000Z"),
     logger: createLogger(),
     ...overrides,
@@ -234,7 +251,6 @@ describe("download tests", () => {
           await Bun.write(outputFilePath, "audio");
         },
         getStorage: () => storageState.storage,
-        isTestEnv: () => false,
         async generateFeed(videosToGenerate): Promise<void> {
           feedVideos = [...videosToGenerate];
         },
@@ -258,10 +274,10 @@ describe("download tests", () => {
   });
 
   it("should not save video info when downloaded file is missing", async () => {
-    const consoleError = spyOn(console, "error").mockImplementation(() => {});
     const { repository, videos } = createRepository();
     let feedCalls = 0;
     const replies: string[] = [];
+    const errors: string[] = [];
 
     const download = createDownloader(
       createDependencies({
@@ -269,6 +285,13 @@ describe("download tests", () => {
         async downloadAudio(): Promise<void> {},
         async generateFeed(): Promise<void> {
           feedCalls += 1;
+        },
+        logger: {
+          info(): void {},
+          success(): void {},
+          error(message): void {
+            errors.push(message);
+          },
         },
       })
     );
@@ -280,7 +303,127 @@ describe("download tests", () => {
     expect(videos).toEqual([]);
     expect(feedCalls).toBe(0);
     expect(replies).toEqual(["Something went wrong. Please try again later..."]);
+    expect(errors.some((message) => JSON.parse(message).stage === "validate")).toBe(true);
+  });
 
-    consoleError.mockRestore();
+  it("should recover a pending publication without downloading again", async () => {
+    const { repository, publicationStatuses } = createRepository();
+    let downloadAudioCalls = 0;
+    let generateFeedCalls = 0;
+    const replies: string[] = [];
+    const download = createDownloader(
+      createDependencies({
+        repository,
+        async downloadAudio(_videoId, outputFilePath): Promise<void> {
+          downloadAudioCalls += 1;
+          await Bun.write(outputFilePath, "audio");
+        },
+        async getVideoInfo(videoId): Promise<Payload> {
+          return createPayload({ id: videoId });
+        },
+        async generateFeed(): Promise<void> {
+          generateFeedCalls += 1;
+          if (generateFeedCalls === 1) {
+            throw new Error("RSS upload failed");
+          }
+        },
+      })
+    );
+
+    const firstResult = await download("recoverVideo", (text) => {
+      replies.push(text);
+    });
+    const secondResult = await download("recoverVideo", (text) => {
+      replies.push(text);
+    });
+
+    expect(firstResult).toEqual({ status: "failed" });
+    expect(secondResult).toEqual({ status: "recovered" });
+    expect(downloadAudioCalls).toBe(1);
+    expect(generateFeedCalls).toBe(2);
+    expect(publicationStatuses.get("recoverVideo")).toBe("published");
+    expect(replies).toEqual([
+      "Something went wrong. Please try again later...",
+      "RSS feed publication was successfully recovered.",
+    ]);
+  });
+
+  it("should keep a publication pending when its audio is unavailable", async () => {
+    const pendingVideo = createVideoFromInfo(
+      createPayload({ id: "missingPendingAudio" }),
+      "/missing/audio.mp3",
+      new Date()
+    );
+    const { repository, publicationStatuses } = createRepository([pendingVideo]);
+    publicationStatuses.set("missingPendingAudio", "pending");
+    let generateFeedCalls = 0;
+
+    const result = await createDownloader(
+      createDependencies({
+        repository,
+        getStorage: () => ({
+          ...createStorage().storage,
+          async getAudioMetadata(): Promise<{ exists: boolean }> {
+            return { exists: false };
+          },
+        }),
+        async generateFeed(): Promise<void> {
+          generateFeedCalls += 1;
+        },
+      })
+    )("missingPendingAudio");
+
+    expect(result).toEqual({ status: "failed" });
+    expect(generateFeedCalls).toBe(0);
+    expect(publicationStatuses.get("missingPendingAudio")).toBe("pending");
+  });
+
+  it("should serialize video processing to protect RSS publication", async () => {
+    const { repository } = createRepository();
+    const events: string[] = [];
+    let releaseFirstDownload: (() => void) | undefined;
+    let signalFirstStarted: (() => void) | undefined;
+    const firstStarted = new Promise<void>((resolve) => {
+      signalFirstStarted = resolve;
+    });
+    const firstDownloadGate = new Promise<void>((resolve) => {
+      releaseFirstDownload = resolve;
+    });
+    const download = createDownloader(
+      createDependencies({
+        repository,
+        async downloadAudio(videoId, outputFilePath): Promise<void> {
+          events.push(`download:${videoId}`);
+          if (videoId === "firstVideo") {
+            signalFirstStarted?.();
+            await firstDownloadGate;
+          }
+          await Bun.write(outputFilePath, "audio");
+        },
+        async getVideoInfo(videoId): Promise<Payload> {
+          return createPayload({ id: videoId });
+        },
+        async generateFeed(videos): Promise<void> {
+          events.push(`feed:${videos.map((video) => video.video_id).join(",")}`);
+        },
+      })
+    );
+
+    const first = download("firstVideo");
+    await firstStarted;
+    const second = download("secondVideo");
+    await Promise.resolve();
+
+    expect(events).toEqual(["download:firstVideo"]);
+
+    releaseFirstDownload?.();
+    await Promise.all([first, second]);
+
+    expect(events).toEqual([
+      "download:firstVideo",
+      "feed:firstVideo",
+      "download:secondVideo",
+      "feed:firstVideo,secondVideo",
+    ]);
   });
 });

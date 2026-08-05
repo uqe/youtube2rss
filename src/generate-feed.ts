@@ -1,32 +1,37 @@
-import { getRssFilePath, getServerUrl, isTestEnv } from "./config.ts";
+import { getRequiredServerUrl, getRssFilePath } from "./config.ts";
 import { logger } from "./logger.ts";
 import { getStorage } from "./storage.ts";
-import type { Storage } from "./storage.ts";
+import type { AudioMetadata, Storage } from "./storage.ts";
 import type { Video } from "./types.ts";
 import { Podcast } from "podcast";
 
-export const serverUrl = () => getServerUrl();
+const repositoryUrl = "https://github.com/uqe/youtube2rss";
+
+export const serverUrl = () => getRequiredServerUrl();
 
 export const rssFile = () => getRssFilePath();
 
-export const getAudioUrl = (videoId: string) => `${serverUrl()}/files/${videoId}.mp3`;
+export const getAudioUrl = (videoId: string, baseUrl = serverUrl()) => `${baseUrl}/files/${videoId}.mp3`;
 
-const xml = (feed: Podcast) => (isTestEnv() ? feed.buildXml() : feed.buildXml({ indent: "  " }));
+export interface FeedOptionsInput {
+  baseUrl?: string;
+  now?: Date;
+}
 
-export const createFeedOptions = () => ({
+export const createFeedOptions = ({ baseUrl = serverUrl(), now = new Date() }: FeedOptionsInput = {}) => ({
   title: "YouTube",
   description: "YouTube personal feed",
-  feedUrl: `${serverUrl()}/rss.xml`,
-  siteUrl: "https://github.com/uqe/youtube2rss",
-  imageUrl: `${serverUrl()}/cover.jpg`,
+  feedUrl: `${baseUrl}/rss.xml`,
+  siteUrl: repositoryUrl,
+  imageUrl: `${baseUrl}/cover.jpg`,
   author: "Arthur N",
   managingEditor: "arthurn@duck.com",
-  generator: "https://github.com/uqe/youtube2rss",
+  generator: repositoryUrl,
   webMaster: "arthurn@duck.com",
-  copyright: "2025 Arthur N",
+  copyright: `${now.getUTCFullYear()} Arthur N`,
   language: "ru",
   categories: ["Education", "Self-Improvement"],
-  pubDate: new Date(Date.parse("2025-02-26")),
+  pubDate: now,
   ttl: 5,
   itunesAuthor: "Arthur N",
   itunesSubtitle: "YouTube personal feed",
@@ -43,26 +48,27 @@ export const createFeedOptions = () => ({
       ],
     },
   ],
-  itunesImage: `${serverUrl()}/cover.jpg`,
+  itunesImage: `${baseUrl}/cover.jpg`,
 });
 
 type FeedItem = Parameters<Podcast["addItem"]>[0];
 
-export const createFeedItem = (video: Video, shouldIncludeEnclosure = !isTestEnv()): FeedItem => {
-  const audioUrl = getAudioUrl(video.video_id);
+export const createFeedItem = (video: Video, audio?: AudioMetadata, baseUrl = serverUrl()): FeedItem => {
+  const audioUrl = getAudioUrl(video.video_id, baseUrl);
 
   return {
     title: video.video_name,
     description: video.video_description ?? "",
-    url: audioUrl,
+    url: video.video_url,
     guid: video.video_id,
     author: "Arthur N",
     date: video.video_added_date,
-    enclosure: shouldIncludeEnclosure
+    enclosure: audio?.exists
       ? {
           url: audioUrl,
-          file: video.video_path,
-          type: "audio/mp3",
+          file: audio.filePath,
+          size: audio.size,
+          type: "audio/mpeg",
         }
       : undefined,
     itunesAuthor: "Arthur N",
@@ -75,27 +81,49 @@ export const createFeedItem = (video: Video, shouldIncludeEnclosure = !isTestEnv
 
 export interface GenerateFeedOptions {
   storage?: Storage;
+  baseUrl?: string;
+  rssFilePath?: string;
+  now?: Date;
+  publish?: boolean;
+  verifyAudio?: boolean;
+  includeEnclosures?: boolean;
 }
 
-export const generateFeed = async (allVideos: Video[], { storage = getStorage() }: GenerateFeedOptions = {}) => {
-  const feed = new Podcast(createFeedOptions());
+const getTimestamp = (video: Video) => {
+  const timestamp = Date.parse(video.video_added_date);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
 
-  for (const item of allVideos) {
-    const videoFile = Bun.file(item.video_path);
-    const fileExists = await videoFile.exists();
+export const generateFeed = async (
+  allVideos: Video[],
+  {
+    storage = getStorage(),
+    baseUrl = serverUrl(),
+    rssFilePath = rssFile(),
+    now = new Date(),
+    publish = true,
+    verifyAudio = true,
+    includeEnclosures = true,
+  }: GenerateFeedOptions = {}
+) => {
+  const feed = new Podcast(createFeedOptions({ baseUrl, now }));
+  const orderedVideos = [...allVideos].sort((left, right) => getTimestamp(right) - getTimestamp(left));
 
-    if (!fileExists && !isTestEnv()) {
-      logger.info(`File ${item.video_path} doesn't exist. Skipping...`);
+  for (const item of orderedVideos) {
+    const audio = verifyAudio ? await storage.getAudioMetadata(item.video_id, item.video_path) : { exists: true };
+
+    if (!audio.exists) {
+      logger.info(`Audio is unavailable for video ${item.video_id}; skipping RSS item`);
       continue;
     }
 
-    feed.addItem(createFeedItem(item));
+    feed.addItem(createFeedItem(item, includeEnclosures ? audio : undefined, baseUrl));
   }
 
-  await Bun.write(rssFile(), xml(feed));
+  await Bun.write(rssFilePath, feed.buildXml({ indent: "  " }));
 
-  if (!isTestEnv()) {
-    await storage.uploadRss(rssFile());
+  if (publish) {
+    await storage.uploadRss(rssFilePath);
     await storage.ensureCoverImage();
   }
 };

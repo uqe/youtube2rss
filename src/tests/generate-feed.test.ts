@@ -43,9 +43,28 @@ const mockVideos: Video[] = [
 // Mock function for getAllVideos
 const getAllVideos = () => mockVideos;
 
+const testStorage: Storage = {
+  kind: "remote",
+  async uploadAudio(): Promise<void> {},
+  async uploadRss(): Promise<void> {},
+  async ensureCoverImage(): Promise<void> {},
+  async getAudioMetadata(): Promise<{ exists: true; size: number }> {
+    return { exists: true, size: 123 };
+  },
+};
+
+const renderFeed = (videos: Video[], options: Parameters<typeof generateFeed>[1] = {}) =>
+  generateFeed(videos, {
+    storage: testStorage,
+    publish: false,
+    verifyAudio: false,
+    includeEnclosures: false,
+    ...options,
+  });
+
 describe("generate-feed tests", () => {
-  beforeAll(() => {
-    generateFeed(getAllVideos());
+  beforeAll(async () => {
+    await renderFeed(getAllVideos());
   });
 
   afterAll(async () => {
@@ -65,26 +84,31 @@ describe("generate-feed tests", () => {
       expect(getAudioUrl("video123")).toBe(`${serverUrl()}/files/video123.mp3`);
     });
 
-    it("should create feed items without enclosure in test mode", () => {
-      const item = createFeedItem(mockVideos[0], false);
+    it("should create feed items without an enclosure when audio metadata is omitted", () => {
+      const item = createFeedItem(mockVideos[0]);
 
       expect(item).toMatchObject({
         title: mockVideos[0].video_name,
         description: mockVideos[0].video_description,
-        url: getAudioUrl(mockVideos[0].video_id),
+        url: mockVideos[0].video_url,
         guid: mockVideos[0].video_id,
         itunesDuration: mockVideos[0].video_length,
       });
       expect(item.enclosure).toBeUndefined();
     });
 
-    it("should create feed items with enclosure for production mode", () => {
-      const item = createFeedItem(mockVideos[0], true);
+    it("should create feed items with an enclosure when audio metadata is available", () => {
+      const item = createFeedItem(mockVideos[0], {
+        exists: true,
+        size: 123,
+        filePath: mockVideos[0].video_path,
+      });
 
       expect(item.enclosure).toEqual({
         url: getAudioUrl(mockVideos[0].video_id),
         file: mockVideos[0].video_path,
-        type: "audio/mp3",
+        size: 123,
+        type: "audio/mpeg",
       });
     });
 
@@ -104,7 +128,7 @@ describe("generate-feed tests", () => {
       mockVideos.forEach((video) => {
         const title = `<title><![CDATA[${video.video_name}]]></title>`;
         const description = `<description><![CDATA[${video.video_description || ""}]]></description>`;
-        const link = `<link>${serverUrl()}/files/${video.video_id}.mp3</link>`;
+        const link = `<link>${video.video_url.replaceAll("&", "&amp;")}</link>`;
         const guid = `<guid isPermaLink="false">${video.video_id}</guid>`;
         const creator = "<dc:creator><![CDATA[Arthur N]]></dc:creator>";
         const date = `<pubDate>${new Date(video.video_added_date).toUTCString()}</pubDate>`;
@@ -113,9 +137,21 @@ describe("generate-feed tests", () => {
         const summary = `<itunes:summary>${video.video_description?.replaceAll("'", "&apos;")}</itunes:summary>`;
         const explicit = "<itunes:explicit>false</itunes:explicit>";
         const duration = `<itunes:duration>${formatSeconds(video.video_length)}</itunes:duration>`;
-        const item = `<item>${title}${description}${link}${guid}${creator}${date}${author}${subtitle}${summary}${explicit}${duration}</item>`;
-
-        expect(xmlContent.includes(item)).toBe(true);
+        for (const fragment of [
+          title,
+          description,
+          link,
+          guid,
+          creator,
+          date,
+          author,
+          subtitle,
+          summary,
+          explicit,
+          duration,
+        ]) {
+          expect(xmlContent).toContain(fragment);
+        }
       });
     });
 
@@ -130,7 +166,7 @@ describe("generate-feed tests", () => {
         video_length: 200,
       };
 
-      await generateFeed([specialCharsVideo]);
+      await renderFeed([specialCharsVideo]);
 
       const xmlContent = await Bun.file(rssFile()).text();
 
@@ -138,7 +174,7 @@ describe("generate-feed tests", () => {
       expect(xmlContent).toContain(`<description><![CDATA[${specialCharsVideo.video_description}]]></description>`);
     });
 
-    it("should handle non-existent files in test mode", async () => {
+    it("should render without checking local files when audio verification is disabled", async () => {
       const nonExistentVideo: Video = {
         video_id: "NonExistVideo",
         video_name: "Non-existent video",
@@ -149,7 +185,7 @@ describe("generate-feed tests", () => {
         video_length: 100,
       };
 
-      await generateFeed([nonExistentVideo]);
+      await renderFeed([nonExistentVideo]);
 
       const fileExists = await Bun.file(rssFile()).exists();
 
@@ -162,7 +198,7 @@ describe("generate-feed tests", () => {
     });
 
     it("should handle empty video list", async () => {
-      await generateFeed([]);
+      await renderFeed([]);
 
       const fileExists = await Bun.file(rssFile()).exists();
       expect(fileExists).toBe(true);
@@ -189,7 +225,7 @@ describe("generate-feed tests", () => {
         video_length: 150,
       };
 
-      await generateFeed([videoWithNullDesc]);
+      await renderFeed([videoWithNullDesc]);
 
       const xmlContent = await Bun.file(rssFile()).text();
 
@@ -212,7 +248,7 @@ describe("generate-feed tests", () => {
         video_length: 200,
       };
 
-      await generateFeed([videoWithLongDesc]);
+      await renderFeed([videoWithLongDesc]);
 
       const xmlContent = await Bun.file(rssFile()).text();
 
@@ -231,7 +267,7 @@ describe("generate-feed tests", () => {
         video_length: 180,
       };
 
-      await generateFeed([unicodeVideo]);
+      await renderFeed([unicodeVideo]);
 
       const xmlContent = await Bun.file(rssFile()).text();
 
@@ -250,7 +286,7 @@ describe("generate-feed tests", () => {
         video_length: 0,
       };
 
-      await generateFeed([zeroLengthVideo]);
+      await renderFeed([zeroLengthVideo]);
 
       const xmlContent = await Bun.file(rssFile()).text();
 
@@ -290,7 +326,7 @@ describe("generate-feed tests", () => {
         },
       ];
 
-      await generateFeed(videos);
+      await renderFeed(videos);
 
       const xmlContent = await Bun.file(rssFile()).text();
 
@@ -303,17 +339,17 @@ describe("generate-feed tests", () => {
       expect(xmlContent).toContain("<itunes:duration>");
     });
 
-    it("should not include audio enclosure tags in test mode", async () => {
-      await generateFeed([mockVideos[0]]);
+    it("should omit audio enclosure tags when enclosure rendering is disabled", async () => {
+      await renderFeed([mockVideos[0]]);
 
       const xmlContent = await Bun.file(rssFile()).text();
 
       expect(xmlContent).not.toContain("<enclosure");
-      expect(xmlContent).toContain(`<link>${serverUrl()}/files/${mockVideos[0].video_id}.mp3</link>`);
+      expect(xmlContent).toContain(`<link>${mockVideos[0].video_url.replaceAll("&", "&amp;")}</link>`);
     });
 
-    it("should keep RSS items in the input order", async () => {
-      await generateFeed(mockVideos);
+    it("should put newest RSS items first", async () => {
+      await renderFeed(mockVideos);
 
       const xmlContent = await Bun.file(rssFile()).text();
       const firstIndex = xmlContent.indexOf(mockVideos[0].video_id);
@@ -321,13 +357,14 @@ describe("generate-feed tests", () => {
 
       expect(firstIndex).toBeGreaterThan(-1);
       expect(secondIndex).toBeGreaterThan(-1);
-      expect(firstIndex).toBeLessThan(secondIndex);
+      expect(secondIndex).toBeLessThan(firstIndex);
     });
 
-    it("should accept injected storage without uploading in test mode", async () => {
+    it("should accept injected storage without publishing", async () => {
       let uploadRssCalls = 0;
       let ensureCoverImageCalls = 0;
       const storage: Storage = {
+        kind: "remote",
         async uploadAudio(): Promise<void> {},
         async uploadRss(): Promise<void> {
           uploadRssCalls += 1;
@@ -335,12 +372,46 @@ describe("generate-feed tests", () => {
         async ensureCoverImage(): Promise<void> {
           ensureCoverImageCalls += 1;
         },
+        async getAudioMetadata(): Promise<{ exists: true; size: number }> {
+          return { exists: true, size: 123 };
+        },
       };
 
-      await generateFeed([mockVideos[0]], { storage });
+      await renderFeed([mockVideos[0]], { storage });
 
       expect(uploadRssCalls).toBe(0);
       expect(ensureCoverImageCalls).toBe(0);
+    });
+
+    it("should publish RSS and use remote audio metadata when local files are absent", async () => {
+      let uploadRssCalls = 0;
+      let ensureCoverImageCalls = 0;
+      const storage: Storage = {
+        kind: "remote",
+        async uploadAudio(): Promise<void> {},
+        async uploadRss(): Promise<void> {
+          uploadRssCalls += 1;
+        },
+        async ensureCoverImage(): Promise<void> {
+          ensureCoverImageCalls += 1;
+        },
+        async getAudioMetadata(): Promise<{ exists: true; size: number }> {
+          return { exists: true, size: 9876 };
+        },
+      };
+
+      await renderFeed([mockVideos[0]], {
+        storage,
+        publish: true,
+        verifyAudio: true,
+        includeEnclosures: true,
+      });
+
+      const xmlContent = await Bun.file(rssFile()).text();
+      expect(uploadRssCalls).toBe(1);
+      expect(ensureCoverImageCalls).toBe(1);
+      expect(xmlContent).toContain('length="9876"');
+      expect(xmlContent).toContain('type="audio/mpeg"');
     });
   });
 

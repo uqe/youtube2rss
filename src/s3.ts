@@ -1,4 +1,5 @@
-import { getS3Config, isS3Configured } from "./config.ts";
+import { getValidatedS3Config } from "./config.ts";
+import type { S3Config } from "./config.ts";
 import { logger } from "./logger.ts";
 import type { Storage } from "./storage.ts";
 import { S3Client } from "bun";
@@ -6,6 +7,7 @@ import { S3Client } from "bun";
 interface S3StorageClient {
   write(path: string, file: Blob): Promise<unknown>;
   exists(path: string): Promise<boolean>;
+  size(path: string): Promise<number>;
 }
 
 interface S3StorageLogger {
@@ -14,13 +16,15 @@ interface S3StorageLogger {
 
 interface S3StorageOptions {
   client?: S3StorageClient;
-  isConfigured?: () => boolean;
+  config?: S3Config | null;
   coverImagePath?: string;
   log?: S3StorageLogger;
 }
 
-const createS3Client = () => {
-  const s3Config = getS3Config();
+const createS3Client = (s3Config: S3Config | null) => {
+  if (!s3Config) {
+    throw new Error("S3 is not configured");
+  }
 
   return new S3Client({
     endpoint: s3Config.endpoint,
@@ -32,17 +36,11 @@ const createS3Client = () => {
 
 export const createS3Storage = ({
   client,
-  isConfigured = isS3Configured,
+  config,
   coverImagePath = "./public/cover.jpg",
   log = logger,
 }: S3StorageOptions = {}): Storage => {
-  if (!isConfigured()) {
-    throw new Error(
-      "S3 is not properly configured. Please set all required environment variables: S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY"
-    );
-  }
-
-  const s3client = client ?? createS3Client();
+  const s3client = client ?? createS3Client(config === undefined ? getValidatedS3Config() : config);
 
   const uploadAudio = async (videoId: string, filePath: string): Promise<void> => {
     try {
@@ -75,9 +73,25 @@ export const createS3Storage = ({
     }
   };
 
+  const getAudioMetadata = async (videoId: string, filePath: string) => {
+    const localFile = Bun.file(filePath);
+    if (await localFile.exists()) {
+      return { exists: true, size: localFile.size, filePath };
+    }
+
+    const objectPath = `files/${videoId}.mp3`;
+    if (!(await s3client.exists(objectPath))) {
+      return { exists: false };
+    }
+
+    return { exists: true, size: await s3client.size(objectPath) };
+  };
+
   return {
+    kind: "remote",
     uploadAudio,
     uploadRss,
     ensureCoverImage,
+    getAudioMetadata,
   };
 };

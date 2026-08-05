@@ -19,6 +19,9 @@ const createClient = ({ coverExists = false, failWrite = false } = {}) => {
         existsChecks.push(path);
         return coverExists;
       },
+      async size(): Promise<number> {
+        return 123;
+      },
     },
   };
 };
@@ -29,19 +32,13 @@ const silentLogger = {
 
 describe("s3 storage tests", () => {
   it("should throw when S3 is not configured", () => {
-    expect(() =>
-      createS3Storage({
-        isConfigured: () => false,
-        log: silentLogger,
-      })
-    ).toThrow("S3 is not properly configured");
+    expect(() => createS3Storage({ config: null, log: silentLogger })).toThrow("S3 is not configured");
   });
 
   it("should upload audio and RSS to expected keys", async () => {
     const { client, writes } = createClient();
     const storage = createS3Storage({
       client,
-      isConfigured: () => true,
       log: silentLogger,
     });
 
@@ -55,7 +52,6 @@ describe("s3 storage tests", () => {
     const { client, writes, existsChecks } = createClient({ coverExists: true });
     const storage = createS3Storage({
       client,
-      isConfigured: () => true,
       log: silentLogger,
     });
 
@@ -69,7 +65,6 @@ describe("s3 storage tests", () => {
     const { client, writes, existsChecks } = createClient({ coverExists: false });
     const storage = createS3Storage({
       client,
-      isConfigured: () => true,
       coverImagePath: "/tmp/cover.jpg",
       log: silentLogger,
     });
@@ -84,10 +79,18 @@ describe("s3 storage tests", () => {
     const { client } = createClient({ failWrite: true });
     const storage = createS3Storage({
       client,
-      isConfigured: () => true,
       log: silentLogger,
     });
 
     await expect(storage.uploadRss("/tmp/rss.xml")).rejects.toThrow("write failed");
+  });
+
+  it("should resolve metadata from S3 when the local audio file is absent", async () => {
+    const { client } = createClient({ coverExists: true });
+    const storage = createS3Storage({ client, log: silentLogger });
+
+    const metadata = await storage.getAudioMetadata("video123", "/tmp/youtube2rss-missing-audio.mp3");
+
+    expect(metadata).toEqual({ exists: true, size: 123 });
   });
 });

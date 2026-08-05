@@ -1,7 +1,7 @@
 {
   "name": "youtube2rss",
   "type": "module",
-  "module": "src/telegram.ts",
+  "module": "src/index.ts",
   "scripts": {
     "build-rss": "bun --env-file=.env.dev src/build-rss.ts",
     "start": "bun --env-file=.env src/index.ts",
@@ -9,12 +9,14 @@
     "serve": "bun --env-file=.env run src/serve.ts",
     "serve:dev": "bun --env-file=.env.dev run src/serve.ts",
     "prepare": "bun --env-file=.env.dev run src/prepare.ts",
-    "tests": "IS_TEST=true bun test",
+    "test": "bun --no-env-file test",
+    "tests": "bun run test",
+    "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "format": "oxfmt --check .",
     "format:fix": "oxfmt --write .",
-    "check": "bun run lint && bun run format",
+    "check": "bun run lint && bun run format && bun run typecheck && bun run test",
     "check:fix": "bun run lint:fix && bun run format:fix",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:start:dev": "pm2 start ecosystem.config.cjs --env development",
@@ -30,16 +32,16 @@
   },
   "dependencies": {
     "adze": "^2.3.0",
-    "grammy": "^1.44.0",
+    "grammy": "^1.45.1",
     "podcast": "^2.0.1",
-    "typescript": "^5.9.3",
-    "youtube-dl-exec": "^3.1.9"
+    "youtube-dl-exec": "^3.1.10"
   },
   "devDependencies": {
     "@libs/xml": "npm:@jsr/libs__xml@8.0.0",
     "@types/bun": "^1.3.14",
-    "oxfmt": "^0.58.0",
-    "oxlint": "^1.73.0"
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.77.0",
+    "typescript": "5.9.3"
   },
   "trustedDependencies": [
     "es5-ext",

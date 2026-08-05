@@ -71,8 +71,8 @@ describe("serve tests", () => {
       expect(getOptimalCacheControl("audio/mpeg")).toBe("public, max-age=2592000");
     });
 
-    it("should return 15 minutes cache for application/xml", () => {
-      expect(getOptimalCacheControl("application/xml")).toBe("public, max-age=900");
+    it("should align application/xml cache with the five-minute RSS TTL", () => {
+      expect(getOptimalCacheControl("application/xml")).toBe("public, max-age=300");
     });
 
     it("should return 7 days cache for image/png", () => {
@@ -132,9 +132,9 @@ describe("serve tests", () => {
       expect(result).toBeNull();
     });
 
-    it("should return null when end >= fileSize", () => {
+    it("should clamp an end beyond the file size", () => {
       const result = parseRangeHeader("bytes=0-1000", fileSize);
-      expect(result).toBeNull();
+      expect(result).toEqual([0, 999]);
     });
 
     it("should return null when start > end", () => {
@@ -152,9 +152,13 @@ describe("serve tests", () => {
       expect(result).toEqual([999, 999]);
     });
 
-    it("should return null for negative numbers (regex won't match)", () => {
-      const result = parseRangeHeader("bytes=-500-", fileSize);
-      expect(result).toBeNull();
+    it("should parse suffix ranges", () => {
+      const result = parseRangeHeader("bytes=-500", fileSize);
+      expect(result).toEqual([500, 999]);
+    });
+
+    it("should reject multiple ranges", () => {
+      expect(parseRangeHeader("bytes=0-10,20-30", fileSize)).toBeNull();
     });
   });
 
@@ -341,9 +345,74 @@ describe("serve tests", () => {
 
         await Bun.file(testFile).delete();
       });
+
+      it("should serve suffix ranges", async () => {
+        const testFile = "./public/test-suffix-range.mp3";
+        await Bun.write(testFile, "0123456789");
+
+        const response = await serverHandler(
+          new Request("http://localhost/test-suffix-range.mp3", {
+            headers: { Range: "bytes=-4" },
+          })
+        );
+
+        expect(response.status).toBe(206);
+        expect(response.headers.get("Content-Range")).toBe("bytes 6-9/10");
+        expect(await response.text()).toBe("6789");
+
+        await Bun.file(testFile).delete();
+      });
+
+      it("should return 416 for an invalid audio range", async () => {
+        const testFile = "./public/test-invalid-range.mp3";
+        await Bun.write(testFile, "0123456789");
+
+        const response = await serverHandler(
+          new Request("http://localhost/test-invalid-range.mp3", {
+            headers: { Range: "bytes=20-30" },
+          })
+        );
+
+        expect(response.status).toBe(416);
+        expect(response.headers.get("Content-Range")).toBe("bytes */10");
+        expect(response.headers.get("Content-Length")).toBe("0");
+
+        await Bun.file(testFile).delete();
+      });
+
+      it("should return headers without a body for HEAD range requests", async () => {
+        const testFile = "./public/test-head-range.mp3";
+        await Bun.write(testFile, "0123456789");
+
+        const response = await serverHandler(
+          new Request("http://localhost/test-head-range.mp3", {
+            method: "HEAD",
+            headers: { Range: "bytes=2-5" },
+          })
+        );
+
+        expect(response.status).toBe(206);
+        expect(response.headers.get("Content-Length")).toBe("4");
+        expect(await response.text()).toBe("");
+
+        await Bun.file(testFile).delete();
+      });
     });
 
     describe("Response headers", () => {
+      it("should include length and range support for full audio responses", async () => {
+        const testFile = "./public/test-full-audio.mp3";
+        await Bun.write(testFile, "0123456789");
+
+        const response = await serverHandler(new Request("http://localhost/test-full-audio.mp3"));
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Length")).toBe("10");
+        expect(response.headers.get("Accept-Ranges")).toBe("bytes");
+
+        await Bun.file(testFile).delete();
+      });
+
       it("should include CORS header", async () => {
         // Создаём временный тестовый файл
         const testFile = "./public/test-cors.html";

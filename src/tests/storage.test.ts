@@ -28,9 +28,11 @@ describe("storage tests", () => {
   describe("Storage interface", () => {
     it("should define correct interface methods", () => {
       const storage: Storage = {
+        kind: "local",
         uploadAudio: async () => {},
         uploadRss: async () => {},
         ensureCoverImage: async () => {},
+        getAudioMetadata: async () => ({ exists: true }),
       };
 
       expect(typeof storage.uploadAudio).toBe("function");
@@ -55,9 +57,11 @@ describe("storage tests", () => {
 
     it("uploadAudio should resolve without error for local storage", async () => {
       const mockLocalStorage: Storage = {
+        kind: "local",
         uploadAudio: async (): Promise<void> => {},
         uploadRss: async (): Promise<void> => {},
         ensureCoverImage: async (): Promise<void> => {},
+        getAudioMetadata: async () => ({ exists: true }),
       };
 
       await expect(mockLocalStorage.uploadAudio("testId", "/path/to/file.mp3")).resolves.toBeUndefined();
@@ -65,9 +69,11 @@ describe("storage tests", () => {
 
     it("uploadRss should resolve without error for local storage", async () => {
       const mockLocalStorage: Storage = {
+        kind: "local",
         uploadAudio: async (): Promise<void> => {},
         uploadRss: async (): Promise<void> => {},
         ensureCoverImage: async (): Promise<void> => {},
+        getAudioMetadata: async () => ({ exists: true }),
       };
 
       await expect(mockLocalStorage.uploadRss("/path/to/rss.xml")).resolves.toBeUndefined();
@@ -75,12 +81,36 @@ describe("storage tests", () => {
 
     it("ensureCoverImage should resolve without error for local storage", async () => {
       const mockLocalStorage: Storage = {
+        kind: "local",
         uploadAudio: async (): Promise<void> => {},
         uploadRss: async (): Promise<void> => {},
         ensureCoverImage: async (): Promise<void> => {},
+        getAudioMetadata: async () => ({ exists: true }),
       };
 
       await expect(mockLocalStorage.ensureCoverImage()).resolves.toBeUndefined();
+    });
+
+    it("should read local audio metadata without opening the file", async () => {
+      const filePath = `${import.meta.dir}/data/storage-metadata.mp3`;
+      await Bun.write(filePath, "audio");
+
+      try {
+        await expect(createLocalStorage().getAudioMetadata("videoId", filePath)).resolves.toEqual({
+          exists: true,
+          size: 5,
+          filePath,
+        });
+      } finally {
+        await Bun.file(filePath).delete();
+      }
+    });
+
+    it("should report missing local audio", async () => {
+      const filePath = `${import.meta.dir}/data/missing-storage-audio.mp3`;
+      await expect(createLocalStorage().getAudioMetadata("videoId", filePath)).resolves.toEqual({
+        exists: false,
+      });
     });
   });
 

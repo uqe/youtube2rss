@@ -1,24 +1,33 @@
-import { getRequiredBotToken, getTelegramWhitelist } from "./config.ts";
+import { getRequiredBotToken, getTelegramWhitelist, loadBotAppConfig } from "./config.ts";
+import type { BotAppConfig } from "./config.ts";
+import { createDb } from "./db.ts";
 import { download } from "./download.ts";
 import { getYoutubeVideoId } from "./helpers.ts";
 import { logger } from "./logger.ts";
+import { registerShutdownHandlers } from "./shutdown.ts";
 import { Bot, GrammyError, HttpError } from "grammy";
 import type { Message } from "grammy/types";
 
 interface BotLogger {
+  info(message: string): void;
   success(message: string): void;
   error(message: string): void;
 }
 
 type ReplyHandler = (text: string) => Promise<Message.TextMessage> | void;
-type DownloadVideo = (videoId: string, handler: ReplyHandler) => Promise<void>;
+type DownloadVideo = (videoId: string, handler: ReplyHandler) => Promise<unknown>;
 type GetVideoId = (text: string) => string | null;
 
 interface BotDependencies {
   botToken?: string;
   telegramWhitelist?: number[];
   downloadVideo?: DownloadVideo;
+}
+
+interface StartBotOptions extends BotDependencies {
   logger?: BotLogger;
+  initializeDatabase?: () => Promise<void>;
+  loadConfiguration?: () => BotAppConfig;
 }
 
 export interface IncomingBotMessage {
@@ -88,8 +97,19 @@ export const createBot = ({
   return bot;
 };
 
-export const startBot = ({ logger: botLogger = logger, ...dependencies }: BotDependencies = {}) => {
-  const bot = createBot(dependencies);
+export const startBot = async ({
+  logger: botLogger = logger,
+  initializeDatabase = createDb,
+  loadConfiguration = loadBotAppConfig,
+  ...dependencies
+}: StartBotOptions = {}) => {
+  const config = loadConfiguration();
+  await initializeDatabase();
+  const bot = createBot({
+    ...dependencies,
+    botToken: dependencies.botToken ?? config.botToken,
+    telegramWhitelist: dependencies.telegramWhitelist ?? config.telegramWhitelist,
+  });
 
   bot.catch((err) => {
     const ctx = err.ctx;
@@ -105,11 +125,17 @@ export const startBot = ({ logger: botLogger = logger, ...dependencies }: BotDep
   });
 
   bot.start();
+  registerShutdownHandlers({
+    async shutdown(signal) {
+      botLogger.info(`Received ${signal}; stopping Telegram bot`);
+      await bot.stop();
+    },
+  });
   botLogger.success("Bot is up and running!");
 
   return bot;
 };
 
 if (import.meta.main) {
-  startBot();
+  await startBot();
 }

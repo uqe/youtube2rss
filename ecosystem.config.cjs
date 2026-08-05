@@ -6,7 +6,7 @@ module.exports = {
       interpreter: "bun",
       instances: 1,
       exec_mode: "fork",
-      watch: true,
+      watch: false,
       ignore_watch: ["node_modules", "logs", "youtube2rss.db"],
       env: {
         NODE_ENV: "production",
@@ -33,7 +33,7 @@ module.exports = {
       interpreter: "bun",
       instances: 1,
       exec_mode: "fork",
-      watch: true,
+      watch: false,
       ignore_watch: ["node_modules", "logs", "youtube2rss.db"],
       env: {
         NODE_ENV: "production",

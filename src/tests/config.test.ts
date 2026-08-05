@@ -14,6 +14,9 @@ import {
   getYoutubeDownloadTimeoutMs,
   isS3Configured,
   isTestEnv,
+  loadBotAppConfig,
+  loadServerAppConfig,
+  normalizeServerUrl,
   parseInteger,
   parseIntegerList,
   requireEnv,
@@ -21,43 +24,37 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 describe("config tests", () => {
-  // Сохраняем оригинальные значения переменных окружения
+  const environmentVariableNames = [
+    "IS_TEST",
+    "SERVER_URL",
+    "S3_ENDPOINT",
+    "S3_BUCKET",
+    "S3_ACCESS_KEY",
+    "S3_SECRET_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "PORT",
+    "LOG_LEVEL",
+    "TELEGRAM_WHITELIST",
+    "YOUTUBE_COOKIES_FROM_BROWSER",
+    "YOUTUBE_COOKIES_PATH",
+    "YOUTUBE_DOWNLOAD_TIMEOUT_MS",
+    "YOUTUBE_EXTRACTOR_ARGS",
+  ] as const;
   const originalEnv: Record<string, string | undefined> = {};
 
   beforeEach(() => {
-    // Сохраняем оригинальные значения
-    originalEnv.IS_TEST = Bun.env.IS_TEST;
-    originalEnv.SERVER_URL = Bun.env.SERVER_URL;
-    originalEnv.S3_ENDPOINT = Bun.env.S3_ENDPOINT;
-    originalEnv.S3_BUCKET = Bun.env.S3_BUCKET;
-    originalEnv.S3_ACCESS_KEY = Bun.env.S3_ACCESS_KEY;
-    originalEnv.S3_SECRET_KEY = Bun.env.S3_SECRET_KEY;
-    originalEnv.TELEGRAM_BOT_TOKEN = Bun.env.TELEGRAM_BOT_TOKEN;
-    originalEnv.PORT = Bun.env.PORT;
-    originalEnv.LOG_LEVEL = Bun.env.LOG_LEVEL;
-    originalEnv.TELEGRAM_WHITELIST = Bun.env.TELEGRAM_WHITELIST;
-    originalEnv.YOUTUBE_COOKIES_FROM_BROWSER = Bun.env.YOUTUBE_COOKIES_FROM_BROWSER;
-    originalEnv.YOUTUBE_COOKIES_PATH = Bun.env.YOUTUBE_COOKIES_PATH;
-    originalEnv.YOUTUBE_DOWNLOAD_TIMEOUT_MS = Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS;
-    originalEnv.YOUTUBE_EXTRACTOR_ARGS = Bun.env.YOUTUBE_EXTRACTOR_ARGS;
+    for (const name of environmentVariableNames) {
+      originalEnv[name] = Bun.env[name];
+      Bun.env[name] = undefined;
+    }
+
+    Bun.env.IS_TEST = "true";
   });
 
   afterEach(() => {
-    // Восстанавливаем оригинальные значения
-    Bun.env.IS_TEST = originalEnv.IS_TEST;
-    Bun.env.SERVER_URL = originalEnv.SERVER_URL;
-    Bun.env.S3_ENDPOINT = originalEnv.S3_ENDPOINT;
-    Bun.env.S3_BUCKET = originalEnv.S3_BUCKET;
-    Bun.env.S3_ACCESS_KEY = originalEnv.S3_ACCESS_KEY;
-    Bun.env.S3_SECRET_KEY = originalEnv.S3_SECRET_KEY;
-    Bun.env.TELEGRAM_BOT_TOKEN = originalEnv.TELEGRAM_BOT_TOKEN;
-    Bun.env.PORT = originalEnv.PORT;
-    Bun.env.LOG_LEVEL = originalEnv.LOG_LEVEL;
-    Bun.env.TELEGRAM_WHITELIST = originalEnv.TELEGRAM_WHITELIST;
-    Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = originalEnv.YOUTUBE_COOKIES_FROM_BROWSER;
-    Bun.env.YOUTUBE_COOKIES_PATH = originalEnv.YOUTUBE_COOKIES_PATH;
-    Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS = originalEnv.YOUTUBE_DOWNLOAD_TIMEOUT_MS;
-    Bun.env.YOUTUBE_EXTRACTOR_ARGS = originalEnv.YOUTUBE_EXTRACTOR_ARGS;
+    for (const name of environmentVariableNames) {
+      Bun.env[name] = originalEnv[name];
+    }
   });
 
   describe("isTestEnv", () => {
@@ -164,6 +161,10 @@ describe("config tests", () => {
   });
 
   describe("isS3Configured", () => {
+    it("should return false when no S3 variables are set", () => {
+      expect(isS3Configured()).toBe(false);
+    });
+
     it("should return true when all S3 variables are set", () => {
       Bun.env.S3_ENDPOINT = "https://s3.example.com";
       Bun.env.S3_BUCKET = "my-bucket";
@@ -173,49 +174,49 @@ describe("config tests", () => {
       expect(isS3Configured()).toBe(true);
     });
 
-    it("should return false when S3_ENDPOINT is missing", () => {
+    it("should reject configuration when S3_ENDPOINT is missing", () => {
       Bun.env.S3_ENDPOINT = undefined;
       Bun.env.S3_BUCKET = "my-bucket";
       Bun.env.S3_ACCESS_KEY = "access-key";
       Bun.env.S3_SECRET_KEY = "secret-key";
 
-      expect(isS3Configured()).toBe(false);
+      expect(() => isS3Configured()).toThrow("S3_ENDPOINT");
     });
 
-    it("should return false when S3_BUCKET is missing", () => {
+    it("should reject configuration when S3_BUCKET is missing", () => {
       Bun.env.S3_ENDPOINT = "https://s3.example.com";
       Bun.env.S3_BUCKET = undefined;
       Bun.env.S3_ACCESS_KEY = "access-key";
       Bun.env.S3_SECRET_KEY = "secret-key";
 
-      expect(isS3Configured()).toBe(false);
+      expect(() => isS3Configured()).toThrow("S3_BUCKET");
     });
 
-    it("should return false when S3_ACCESS_KEY is missing", () => {
+    it("should reject configuration when S3_ACCESS_KEY is missing", () => {
       Bun.env.S3_ENDPOINT = "https://s3.example.com";
       Bun.env.S3_BUCKET = "my-bucket";
       Bun.env.S3_ACCESS_KEY = undefined;
       Bun.env.S3_SECRET_KEY = "secret-key";
 
-      expect(isS3Configured()).toBe(false);
+      expect(() => isS3Configured()).toThrow("S3_ACCESS_KEY");
     });
 
-    it("should return false when S3_SECRET_KEY is missing", () => {
+    it("should reject configuration when S3_SECRET_KEY is missing", () => {
       Bun.env.S3_ENDPOINT = "https://s3.example.com";
       Bun.env.S3_BUCKET = "my-bucket";
       Bun.env.S3_ACCESS_KEY = "access-key";
       Bun.env.S3_SECRET_KEY = undefined;
 
-      expect(isS3Configured()).toBe(false);
+      expect(() => isS3Configured()).toThrow("S3_SECRET_KEY");
     });
 
-    it("should return false when S3_ENDPOINT is empty string", () => {
+    it("should reject configuration when S3_ENDPOINT is empty", () => {
       Bun.env.S3_ENDPOINT = "";
       Bun.env.S3_BUCKET = "my-bucket";
       Bun.env.S3_ACCESS_KEY = "access-key";
       Bun.env.S3_SECRET_KEY = "secret-key";
 
-      expect(isS3Configured()).toBe(false);
+      expect(() => isS3Configured()).toThrow("S3_ENDPOINT");
     });
   });
 
@@ -251,13 +252,31 @@ describe("config tests", () => {
 
   describe("getRequiredServerUrl", () => {
     it("should return SERVER_URL when set", () => {
+      Bun.env.IS_TEST = "false";
       Bun.env.SERVER_URL = "https://example.com";
       expect(getRequiredServerUrl()).toBe("https://example.com");
     });
 
     it("should throw error when SERVER_URL is not set", () => {
+      Bun.env.IS_TEST = "false";
       Bun.env.SERVER_URL = undefined;
       expect(() => getRequiredServerUrl()).toThrow("SERVER_URL is missing");
+    });
+
+    it("should remove trailing slashes", () => {
+      Bun.env.IS_TEST = "false";
+      Bun.env.SERVER_URL = "https://example.com///";
+      expect(getRequiredServerUrl()).toBe("https://example.com");
+    });
+  });
+
+  describe("normalizeServerUrl", () => {
+    it("should reject relative URLs", () => {
+      expect(() => normalizeServerUrl("example.com/rss")).toThrow("SERVER_URL must be a valid absolute URL");
+    });
+
+    it("should reject unsupported protocols", () => {
+      expect(() => normalizeServerUrl("ftp://example.com")).toThrow("SERVER_URL must use http or https");
     });
   });
 
@@ -307,9 +326,9 @@ describe("config tests", () => {
       expect(getPort()).toBe(3000);
     });
 
-    it("should handle invalid PORT value", () => {
+    it("should reject invalid PORT value", () => {
       Bun.env.PORT = "invalid";
-      expect(getPort()).toBeNaN();
+      expect(() => getPort()).toThrow("PORT must be an integer between 0 and 65535");
     });
 
     it("should parse PORT with surrounding whitespace", () => {
@@ -319,7 +338,12 @@ describe("config tests", () => {
 
     it("should reject PORT values with trailing text", () => {
       Bun.env.PORT = "8080abc";
-      expect(getPort()).toBeNaN();
+      expect(() => getPort()).toThrow("PORT must be an integer between 0 and 65535");
+    });
+
+    it("should reject PORT values outside the TCP range", () => {
+      expect(() => getPort({ PORT: "-1" })).toThrow("PORT must be an integer between 0 and 65535");
+      expect(() => getPort({ PORT: "65536" })).toThrow("PORT must be an integer between 0 and 65535");
     });
   });
 
@@ -382,6 +406,47 @@ describe("config tests", () => {
     it('should return "info" as default when LOG_LEVEL is not set', () => {
       Bun.env.LOG_LEVEL = undefined;
       expect(getLogLevel()).toBe("info");
+    });
+
+    it("should reject unsupported log levels", () => {
+      expect(() => getLogLevel({ LOG_LEVEL: "verbose" })).toThrow("LOG_LEVEL must be one of: debug, info, warn, error");
+    });
+  });
+
+  describe("typed startup configuration", () => {
+    it("should load and normalize bot configuration in one pass", () => {
+      const config = loadBotAppConfig({
+        IS_TEST: "false",
+        SERVER_URL: "https://example.com/",
+        TELEGRAM_BOT_TOKEN: "bot-token",
+        TELEGRAM_WHITELIST: "123,456",
+        YOUTUBE_DOWNLOAD_TIMEOUT_MS: "1000",
+      });
+
+      expect(config.serverUrl).toBe("https://example.com");
+      expect(config.botToken).toBe("bot-token");
+      expect(config.telegramWhitelist).toEqual([123, 456]);
+      expect(config.youtubeDownloadTimeoutMs).toBe(1000);
+      expect(config.s3).toBeNull();
+    });
+
+    it("should fail before startup when S3 configuration is incomplete", () => {
+      expect(() =>
+        loadBotAppConfig({
+          IS_TEST: "false",
+          SERVER_URL: "https://example.com",
+          TELEGRAM_BOT_TOKEN: "bot-token",
+          TELEGRAM_WHITELIST: "123",
+          S3_BUCKET: "audio",
+        })
+      ).toThrow("Incomplete S3 configuration. Missing: S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY");
+    });
+
+    it("should load validated server configuration", () => {
+      expect(loadServerAppConfig({ PORT: "8080", LOG_LEVEL: "warn" })).toEqual({
+        port: 8080,
+        logLevel: "warn",
+      });
     });
   });
 

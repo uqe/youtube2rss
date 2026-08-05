@@ -1,5 +1,6 @@
-import { getLogLevel, getPort } from "./config.ts";
+import { getLogLevel, getPort, loadServerAppConfig } from "./config.ts";
 import { logger } from "./logger.ts";
+import { registerShutdownHandlers } from "./shutdown.ts";
 import { extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
 
 const BASE_PATH = resolve("./public");
@@ -36,7 +37,7 @@ export const getOptimalCacheControl = (contentType: string): string => {
     return "public, max-age=2592000"; // 30 days for audio files
   }
   if (contentType === "application/xml") {
-    return "public, max-age=900"; // 15 minutes for XML (feed files)
+    return "public, max-age=300"; // Keep HTTP caching aligned with the RSS TTL.
   }
   if (contentType.startsWith("image/")) {
     return "public, max-age=604800"; // 7 days for images
@@ -52,13 +53,24 @@ export const createEtag = ({ size, mtime }: { size: number; mtime?: Date | null 
 };
 
 export const parseRangeHeader = (rangeHeader: string, fileSize: number): [number, number] | null => {
-  const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
+  if (fileSize <= 0) return null;
+
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
   if (!match) return null;
 
-  const start = Number.parseInt(match[1], 10);
-  const end = match[2] ? Number.parseInt(match[2], 10) : fileSize - 1;
+  if (!match[1] && !match[2]) return null;
 
-  if (Number.isNaN(start) || Number.isNaN(end) || start >= fileSize || end >= fileSize || start > end) {
+  if (!match[1]) {
+    const suffixLength = Number.parseInt(match[2], 10);
+    if (Number.isNaN(suffixLength) || suffixLength <= 0) return null;
+    return [Math.max(fileSize - suffixLength, 0), fileSize - 1];
+  }
+
+  const start = Number.parseInt(match[1], 10);
+  const requestedEnd = match[2] ? Number.parseInt(match[2], 10) : fileSize - 1;
+  const end = Math.min(requestedEnd, fileSize - 1);
+
+  if (Number.isNaN(start) || Number.isNaN(end) || start >= fileSize || start > end) {
     return null;
   }
 
@@ -127,7 +139,12 @@ export const createStaticFileHandler = ({
         "Created-By": "https://github.com/uqe/youtube2rss",
         "Cache-Control": getOptimalCacheControl(contentType),
         "Access-Control-Allow-Origin": "*",
+        "Content-Length": `${stat.size}`,
       });
+
+      if (contentType === "audio/mpeg") {
+        headers.set("Accept-Ranges", "bytes");
+      }
 
       const rangeHeader = req.headers.get("Range");
       if (rangeHeader && contentType === "audio/mpeg") {
@@ -138,17 +155,20 @@ export const createStaticFileHandler = ({
           const [start, end] = ranges;
           headers.set("Content-Range", `bytes ${start}-${end}/${fileSize}`);
           headers.set("Content-Length", `${end - start + 1}`);
-          headers.set("Accept-Ranges", "bytes");
 
           if (logLevel === "debug") {
             log.debug(`[206] Serving ${safePath} (${contentType}) Range: ${start}-${end}/${fileSize}`);
           }
 
-          return new Response(file.slice(start, end + 1), {
+          return new Response(req.method === "HEAD" ? null : file.slice(start, end + 1), {
             status: 206,
             headers,
           });
         }
+
+        headers.set("Content-Range", `bytes */${fileSize}`);
+        headers.set("Content-Length", "0");
+        return new Response(null, { status: 416, headers });
       }
 
       if (logLevel !== "error") {
@@ -191,13 +211,23 @@ export const createServer = ({
   });
 
 export const startServer = ({
-  port = getPort(),
+  port,
   basePath = BASE_PATH,
   log = logger,
+  logLevel,
   ...options
 }: CreateServerOptions = {}) => {
-  const server = createServer({ ...options, port, basePath, log });
-  log.info(`Static file server running at http://localhost:${port}`);
+  const config = loadServerAppConfig();
+  const actualPort = port ?? config.port;
+  const actualLogLevel = logLevel ?? config.logLevel;
+  const server = createServer({ ...options, port: actualPort, basePath, log, logLevel: actualLogLevel });
+  registerShutdownHandlers({
+    async shutdown(signal) {
+      log.info(`Received ${signal}; stopping static file server`);
+      await server.stop();
+    },
+  });
+  log.info(`Static file server running at http://localhost:${actualPort}`);
   log.info(`Serving files from: ${basePath}`);
   return server;
 };
