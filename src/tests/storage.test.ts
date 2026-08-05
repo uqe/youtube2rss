@@ -30,14 +30,22 @@ describe("storage tests", () => {
       const storage: Storage = {
         kind: "local",
         uploadAudio: async () => {},
+        uploadArtwork: async () => {},
+        uploadChapters: async () => {},
         uploadRss: async () => {},
         ensureCoverImage: async () => {},
         getAudioMetadata: async () => ({ exists: true }),
+        getArtworkMetadata: async () => ({ exists: true }),
+        getChaptersMetadata: async () => ({ exists: true }),
+        deleteEpisodeAssets: async () => {},
       };
 
       expect(typeof storage.uploadAudio).toBe("function");
+      expect(typeof storage.uploadArtwork).toBe("function");
+      expect(typeof storage.uploadChapters).toBe("function");
       expect(typeof storage.uploadRss).toBe("function");
       expect(typeof storage.ensureCoverImage).toBe("function");
+      expect(typeof storage.deleteEpisodeAssets).toBe("function");
     });
   });
 
@@ -47,6 +55,7 @@ describe("storage tests", () => {
 
       expect(storage).toBeDefined();
       await expect(storage.uploadAudio("videoId", "/missing/audio.mp3")).resolves.toBeUndefined();
+      await expect(storage.uploadChapters("videoId", "/missing/chapters.json")).resolves.toBeUndefined();
       await expect(storage.uploadRss("/missing/rss.xml")).resolves.toBeUndefined();
       await expect(storage.ensureCoverImage()).resolves.toBeUndefined();
     });
@@ -59,9 +68,14 @@ describe("storage tests", () => {
       const mockLocalStorage: Storage = {
         kind: "local",
         uploadAudio: async (): Promise<void> => {},
+        uploadArtwork: async (): Promise<void> => {},
+        uploadChapters: async (): Promise<void> => {},
         uploadRss: async (): Promise<void> => {},
         ensureCoverImage: async (): Promise<void> => {},
         getAudioMetadata: async () => ({ exists: true }),
+        getArtworkMetadata: async () => ({ exists: true }),
+        getChaptersMetadata: async () => ({ exists: true }),
+        deleteEpisodeAssets: async (): Promise<void> => {},
       };
 
       await expect(mockLocalStorage.uploadAudio("testId", "/path/to/file.mp3")).resolves.toBeUndefined();
@@ -71,9 +85,14 @@ describe("storage tests", () => {
       const mockLocalStorage: Storage = {
         kind: "local",
         uploadAudio: async (): Promise<void> => {},
+        uploadArtwork: async (): Promise<void> => {},
+        uploadChapters: async (): Promise<void> => {},
         uploadRss: async (): Promise<void> => {},
         ensureCoverImage: async (): Promise<void> => {},
         getAudioMetadata: async () => ({ exists: true }),
+        getArtworkMetadata: async () => ({ exists: true }),
+        getChaptersMetadata: async () => ({ exists: true }),
+        deleteEpisodeAssets: async (): Promise<void> => {},
       };
 
       await expect(mockLocalStorage.uploadRss("/path/to/rss.xml")).resolves.toBeUndefined();
@@ -83,9 +102,14 @@ describe("storage tests", () => {
       const mockLocalStorage: Storage = {
         kind: "local",
         uploadAudio: async (): Promise<void> => {},
+        uploadArtwork: async (): Promise<void> => {},
+        uploadChapters: async (): Promise<void> => {},
         uploadRss: async (): Promise<void> => {},
         ensureCoverImage: async (): Promise<void> => {},
         getAudioMetadata: async () => ({ exists: true }),
+        getArtworkMetadata: async () => ({ exists: true }),
+        getChaptersMetadata: async () => ({ exists: true }),
+        deleteEpisodeAssets: async (): Promise<void> => {},
       };
 
       await expect(mockLocalStorage.ensureCoverImage()).resolves.toBeUndefined();
@@ -112,6 +136,23 @@ describe("storage tests", () => {
         exists: false,
       });
     });
+
+    it("should delete local episode assets idempotently", async () => {
+      const audioPath = `${import.meta.dir}/data/storage-delete.mp3`;
+      const artworkPath = `${import.meta.dir}/data/storage-delete.jpg`;
+      const chaptersPath = `${import.meta.dir}/data/storage-delete.json`;
+      await Bun.write(audioPath, "audio");
+      await Bun.write(artworkPath, "artwork");
+      await Bun.write(chaptersPath, "chapters");
+
+      const storage = createLocalStorage();
+      await storage.deleteEpisodeAssets("videoId", audioPath, artworkPath, chaptersPath);
+      await storage.deleteEpisodeAssets("videoId", audioPath, artworkPath, chaptersPath);
+
+      expect(await Bun.file(audioPath).exists()).toBe(false);
+      expect(await Bun.file(artworkPath).exists()).toBe(false);
+      expect(await Bun.file(chaptersPath).exists()).toBe(false);
+    });
   });
 
   describe("Storage factory pattern", () => {
@@ -119,10 +160,12 @@ describe("storage tests", () => {
       const localStorage = createLocalStorage();
 
       const audioResult = await localStorage.uploadAudio("videoId", "/path/to/audio.mp3");
+      const chaptersResult = await localStorage.uploadChapters("videoId", "/path/to/chapters.json");
       const rssResult = await localStorage.uploadRss("/path/to/rss.xml");
       const coverResult = await localStorage.ensureCoverImage();
 
       expect(audioResult).toBeUndefined();
+      expect(chaptersResult).toBeUndefined();
       expect(rssResult).toBeUndefined();
       expect(coverResult).toBeUndefined();
     });

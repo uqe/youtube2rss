@@ -5,9 +5,10 @@ import type { Storage } from "./storage.ts";
 import { S3Client } from "bun";
 
 interface S3StorageClient {
-  write(path: string, file: Blob): Promise<unknown>;
+  write(path: string, file: Blob, options?: { type?: string }): Promise<unknown>;
   exists(path: string): Promise<boolean>;
   size(path: string): Promise<number>;
+  delete(path: string): Promise<void>;
 }
 
 interface S3StorageLogger {
@@ -51,6 +52,26 @@ export const createS3Storage = ({
     }
   };
 
+  const uploadArtwork = async (videoId: string, filePath: string): Promise<void> => {
+    try {
+      await s3client.write(`covers/${videoId}.jpg`, Bun.file(filePath));
+    } catch (error) {
+      log.error(`Error uploading artwork to S3 for video ${videoId}: ${error}`);
+      throw error;
+    }
+  };
+
+  const uploadChapters = async (videoId: string, filePath: string): Promise<void> => {
+    try {
+      await s3client.write(`chapters/${videoId}.json`, Bun.file(filePath), {
+        type: "application/json+chapters",
+      });
+    } catch (error) {
+      log.error(`Error uploading chapters to S3 for video ${videoId}: ${error}`);
+      throw error;
+    }
+  };
+
   const uploadRss = async (filePath: string): Promise<void> => {
     try {
       await s3client.write("rss.xml", Bun.file(filePath));
@@ -87,11 +108,65 @@ export const createS3Storage = ({
     return { exists: true, size: await s3client.size(objectPath) };
   };
 
+  const getArtworkMetadata = async (videoId: string, filePath: string) => {
+    if (await Bun.file(filePath).exists()) {
+      return { exists: true };
+    }
+
+    return { exists: await s3client.exists(`covers/${videoId}.jpg`) };
+  };
+
+  const getChaptersMetadata = async (videoId: string, filePath: string) => {
+    if (await Bun.file(filePath).exists()) {
+      return { exists: true };
+    }
+
+    return { exists: await s3client.exists(`chapters/${videoId}.json`) };
+  };
+
+  const deleteEpisodeAssets = async (
+    videoId: string,
+    audioPath: string,
+    artworkPath?: string | null,
+    chaptersPath?: string | null
+  ): Promise<void> => {
+    const deleteLocalFile = async (filePath?: string | null) => {
+      if (!filePath) return;
+
+      const localFile = Bun.file(filePath);
+      if (await localFile.exists()) {
+        await localFile.delete();
+      }
+    };
+    const results = await Promise.allSettled([
+      s3client.delete(`files/${videoId}.mp3`),
+      s3client.delete(`covers/${videoId}.jpg`),
+      s3client.delete(`chapters/${videoId}.json`),
+      deleteLocalFile(audioPath),
+      deleteLocalFile(artworkPath),
+      deleteLocalFile(chaptersPath),
+    ]);
+    const errors = results
+      .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+      .map(({ reason }) => String(reason));
+
+    if (errors.length > 0) {
+      const error = new Error(`Failed to delete episode assets for video ${videoId}: ${errors.join("; ")}`);
+      log.error(error.message);
+      throw error;
+    }
+  };
+
   return {
     kind: "remote",
     uploadAudio,
+    uploadArtwork,
+    uploadChapters,
     uploadRss,
     ensureCoverImage,
     getAudioMetadata,
+    getArtworkMetadata,
+    getChaptersMetadata,
+    deleteEpisodeAssets,
   };
 };

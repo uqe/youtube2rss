@@ -1,4 +1,13 @@
-import { createFeedItem, createFeedOptions, generateFeed, getAudioUrl, rssFile, serverUrl } from "../generate-feed.ts";
+import {
+  createFeedItem,
+  createFeedOptions,
+  generateFeed,
+  getArtworkUrl,
+  getAudioUrl,
+  getChaptersUrl,
+  rssFile,
+  serverUrl,
+} from "../generate-feed.ts";
 import { formatSeconds } from "../helpers.ts";
 import type { Storage } from "../storage.ts";
 import type { Video } from "../types.ts";
@@ -27,6 +36,8 @@ const mockVideos: Video[] = [
     video_url: "https://www.youtube.com/watch?v=Gd8pjyqGf7E",
     video_added_date: "2022-01-01",
     video_path: "/public/files/Gd8pjyqGf7E.mp3",
+    video_artwork_path: "/public/covers/Gd8pjyqGf7E.jpg",
+    video_chapters_path: "/public/chapters/Gd8pjyqGf7E.json",
     video_length: 1153,
   },
   {
@@ -36,6 +47,7 @@ const mockVideos: Video[] = [
     video_url: "https://www.youtube.com/watch?v=_9db9D4um0Y",
     video_added_date: "2022-01-02",
     video_path: "/public/files/_9db9D4um0Y.mp3",
+    video_artwork_path: null,
     video_length: 228,
   },
 ];
@@ -46,11 +58,20 @@ const getAllVideos = () => mockVideos;
 const testStorage: Storage = {
   kind: "remote",
   async uploadAudio(): Promise<void> {},
+  async uploadArtwork(): Promise<void> {},
+  async uploadChapters(): Promise<void> {},
   async uploadRss(): Promise<void> {},
   async ensureCoverImage(): Promise<void> {},
   async getAudioMetadata(): Promise<{ exists: true; size: number }> {
     return { exists: true, size: 123 };
   },
+  async getArtworkMetadata(): Promise<{ exists: boolean }> {
+    return { exists: true };
+  },
+  async getChaptersMetadata(): Promise<{ exists: boolean }> {
+    return { exists: true };
+  },
+  async deleteEpisodeAssets(): Promise<void> {},
 };
 
 const renderFeed = (videos: Video[], options: Parameters<typeof generateFeed>[1] = {}) =>
@@ -84,6 +105,14 @@ describe("generate-feed tests", () => {
       expect(getAudioUrl("video123")).toBe(`${serverUrl()}/files/video123.mp3`);
     });
 
+    it("should build episode artwork URLs consistently", () => {
+      expect(getArtworkUrl("video123")).toBe(`${serverUrl()}/covers/video123.jpg`);
+    });
+
+    it("should build episode chapter URLs consistently", () => {
+      expect(getChaptersUrl("video123")).toBe(`${serverUrl()}/chapters/video123.json`);
+    });
+
     it("should create feed items without an enclosure when audio metadata is omitted", () => {
       const item = createFeedItem(mockVideos[0]);
 
@@ -95,6 +124,42 @@ describe("generate-feed tests", () => {
         itunesDuration: mockVideos[0].video_length,
       });
       expect(item.enclosure).toBeUndefined();
+      expect(item.itunesImage).toBe(getArtworkUrl(mockVideos[0].video_id));
+      expect(item.customElements).toEqual([
+        {
+          "podcast:chapters": [
+            {
+              _attr: {
+                url: getChaptersUrl(mockVideos[0].video_id),
+                type: "application/json+chapters",
+              },
+            },
+          ],
+        },
+      ]);
+    });
+
+    it("should omit episode artwork when a legacy video has none", () => {
+      expect(createFeedItem(mockVideos[1]).itunesImage).toBeUndefined();
+      expect(createFeedItem(mockVideos[1]).customElements).toBeUndefined();
+    });
+
+    it("should omit podcast chapters when the chapter document is unavailable", async () => {
+      try {
+        await renderFeed([mockVideos[0]], {
+          storage: {
+            ...testStorage,
+            async getChaptersMetadata(): Promise<{ exists: boolean }> {
+              return { exists: false };
+            },
+          },
+        });
+
+        const xmlContent = await Bun.file(rssFile()).text();
+        expect(xmlContent).not.toContain("<podcast:chapters");
+      } finally {
+        await renderFeed(getAllVideos());
+      }
     });
 
     it("should create feed items with an enclosure when audio metadata is available", () => {
@@ -151,6 +216,16 @@ describe("generate-feed tests", () => {
           duration,
         ]) {
           expect(xmlContent).toContain(fragment);
+        }
+
+        if (video.video_artwork_path) {
+          expect(xmlContent).toContain(`<itunes:image href="${getArtworkUrl(video.video_id)}"/>`);
+        }
+
+        if (video.video_chapters_path) {
+          expect(xmlContent).toContain(
+            `<podcast:chapters url="${getChaptersUrl(video.video_id)}" type="application/json+chapters">`
+          );
         }
       });
     });
@@ -366,6 +441,8 @@ describe("generate-feed tests", () => {
       const storage: Storage = {
         kind: "remote",
         async uploadAudio(): Promise<void> {},
+        async uploadArtwork(): Promise<void> {},
+        async uploadChapters(): Promise<void> {},
         async uploadRss(): Promise<void> {
           uploadRssCalls += 1;
         },
@@ -375,6 +452,13 @@ describe("generate-feed tests", () => {
         async getAudioMetadata(): Promise<{ exists: true; size: number }> {
           return { exists: true, size: 123 };
         },
+        async getArtworkMetadata(): Promise<{ exists: boolean }> {
+          return { exists: true };
+        },
+        async getChaptersMetadata(): Promise<{ exists: boolean }> {
+          return { exists: true };
+        },
+        async deleteEpisodeAssets(): Promise<void> {},
       };
 
       await renderFeed([mockVideos[0]], { storage });
@@ -389,6 +473,8 @@ describe("generate-feed tests", () => {
       const storage: Storage = {
         kind: "remote",
         async uploadAudio(): Promise<void> {},
+        async uploadArtwork(): Promise<void> {},
+        async uploadChapters(): Promise<void> {},
         async uploadRss(): Promise<void> {
           uploadRssCalls += 1;
         },
@@ -398,6 +484,13 @@ describe("generate-feed tests", () => {
         async getAudioMetadata(): Promise<{ exists: true; size: number }> {
           return { exists: true, size: 9876 };
         },
+        async getArtworkMetadata(): Promise<{ exists: boolean }> {
+          return { exists: true };
+        },
+        async getChaptersMetadata(): Promise<{ exists: boolean }> {
+          return { exists: true };
+        },
+        async deleteEpisodeAssets(): Promise<void> {},
       };
 
       await renderFeed([mockVideos[0]], {

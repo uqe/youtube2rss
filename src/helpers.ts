@@ -1,4 +1,10 @@
-import { getFilesDir, getYoutubeDlAuthOptions, isS3Configured as isS3ConfiguredConfig } from "./config.ts";
+import {
+  getChaptersDir,
+  getCoversDir,
+  getFilesDir,
+  getYoutubeDlAuthOptions,
+  isS3Configured as isS3ConfiguredConfig,
+} from "./config.ts";
 import youtubedl, { type Payload } from "youtube-dl-exec";
 
 const videoIdPattern = /^[a-zA-Z0-9_-]{11,}$/;
@@ -66,6 +72,22 @@ export const getFilePath = (videoId: string, format: "mp3" | "mp4") => {
   }
 
   return `${getFilesDir()}/${videoId}.${format}`;
+};
+
+export const getArtworkPath = (videoId: string) => {
+  if (!safeFileVideoIdPattern.test(videoId)) {
+    throw new Error(`Invalid video ID for artwork path: ${videoId}`);
+  }
+
+  return `${getCoversDir()}/${videoId}.jpg`;
+};
+
+export const getChaptersPath = (videoId: string) => {
+  if (!safeFileVideoIdPattern.test(videoId)) {
+    throw new Error(`Invalid video ID for chapters path: ${videoId}`);
+  }
+
+  return `${getChaptersDir()}/${videoId}.json`;
 };
 
 export const formatSeconds = (seconds: number) => {

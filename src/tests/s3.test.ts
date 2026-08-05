@@ -3,17 +3,22 @@ import { describe, expect, it } from "bun:test";
 
 const createClient = ({ coverExists = false, failWrite = false } = {}) => {
   const writes: string[] = [];
+  const writeTypes: Array<string | undefined> = [];
   const existsChecks: string[] = [];
+  const deletes: string[] = [];
 
   return {
     writes,
+    writeTypes,
     existsChecks,
+    deletes,
     client: {
-      async write(path: string): Promise<void> {
+      async write(path: string, _file: Blob, options?: { type?: string }): Promise<void> {
         if (failWrite) {
           throw new Error("write failed");
         }
         writes.push(path);
+        writeTypes.push(options?.type);
       },
       async exists(path: string): Promise<boolean> {
         existsChecks.push(path);
@@ -21,6 +26,9 @@ const createClient = ({ coverExists = false, failWrite = false } = {}) => {
       },
       async size(): Promise<number> {
         return 123;
+      },
+      async delete(path: string): Promise<void> {
+        deletes.push(path);
       },
     },
   };
@@ -35,17 +43,20 @@ describe("s3 storage tests", () => {
     expect(() => createS3Storage({ config: null, log: silentLogger })).toThrow("S3 is not configured");
   });
 
-  it("should upload audio and RSS to expected keys", async () => {
-    const { client, writes } = createClient();
+  it("should upload episode assets and RSS to expected keys", async () => {
+    const { client, writes, writeTypes } = createClient();
     const storage = createS3Storage({
       client,
       log: silentLogger,
     });
 
     await storage.uploadAudio("video123", "/tmp/video.mp3");
+    await storage.uploadArtwork("video123", "/tmp/video.jpg");
+    await storage.uploadChapters("video123", "/tmp/video.json");
     await storage.uploadRss("/tmp/rss.xml");
 
-    expect(writes).toEqual(["files/video123.mp3", "rss.xml"]);
+    expect(writes).toEqual(["files/video123.mp3", "covers/video123.jpg", "chapters/video123.json", "rss.xml"]);
+    expect(writeTypes).toEqual([undefined, undefined, "application/json+chapters", undefined]);
   });
 
   it("should not upload cover image when it already exists", async () => {
@@ -92,5 +103,23 @@ describe("s3 storage tests", () => {
     const metadata = await storage.getAudioMetadata("video123", "/tmp/youtube2rss-missing-audio.mp3");
 
     expect(metadata).toEqual({ exists: true, size: 123 });
+  });
+
+  it("should delete episode assets from S3 and the local filesystem", async () => {
+    const audioPath = `${import.meta.dir}/data/s3-delete.mp3`;
+    const artworkPath = `${import.meta.dir}/data/s3-delete.jpg`;
+    const chaptersPath = `${import.meta.dir}/data/s3-delete.json`;
+    await Bun.write(audioPath, "audio");
+    await Bun.write(artworkPath, "artwork");
+    await Bun.write(chaptersPath, "chapters");
+    const { client, deletes } = createClient();
+    const storage = createS3Storage({ client, log: silentLogger });
+
+    await storage.deleteEpisodeAssets("video123", audioPath, artworkPath, chaptersPath);
+
+    expect(deletes).toEqual(["files/video123.mp3", "covers/video123.jpg", "chapters/video123.json"]);
+    expect(await Bun.file(audioPath).exists()).toBe(false);
+    expect(await Bun.file(artworkPath).exists()).toBe(false);
+    expect(await Bun.file(chaptersPath).exists()).toBe(false);
   });
 });

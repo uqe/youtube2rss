@@ -1,6 +1,7 @@
 import type { PublicationStatus } from "../db.ts";
 import { createAudioDownloader, createDownloader, createVideoFromInfo } from "../download.ts";
-import type { DownloadDependencies } from "../download.ts";
+import type { DownloadDependencies, DownloadProgress } from "../download.ts";
+import { writeEpisodeChapters } from "../episode-chapters.ts";
 import type { Storage } from "../storage.ts";
 import type { Video } from "../types.ts";
 import { afterEach, describe, expect, it } from "bun:test";
@@ -8,12 +9,13 @@ import type { Payload } from "youtube-dl-exec";
 
 const testFiles = new Set<string>();
 
-const createPayload = (overrides: Partial<Payload> = {}): Payload =>
+const createPayload = (overrides: Record<string, unknown> = {}): Payload =>
   ({
     id: "downloadTestId",
     title: "Download Test",
     description: "Download test description",
     webpage_url: "https://www.youtube.com/watch?v=downloadTest",
+    thumbnail: "https://i.ytimg.com/vi/downloadTest/maxresdefault.jpg",
     duration: 123,
     ...overrides,
   }) as Payload;
@@ -47,22 +49,43 @@ const createRepository = (initialVideos: Video[] = []) => {
 
 const createStorage = () => {
   let uploadAudioCalls = 0;
+  let uploadArtworkCalls = 0;
+  let uploadChaptersCalls = 0;
   const storage: Storage = {
     kind: "local",
     async uploadAudio(): Promise<void> {
       uploadAudioCalls += 1;
+    },
+    async uploadArtwork(): Promise<void> {
+      uploadArtworkCalls += 1;
+    },
+    async uploadChapters(): Promise<void> {
+      uploadChaptersCalls += 1;
     },
     async uploadRss(): Promise<void> {},
     async ensureCoverImage(): Promise<void> {},
     async getAudioMetadata(): Promise<{ exists: boolean }> {
       return { exists: true };
     },
+    async getArtworkMetadata(): Promise<{ exists: boolean }> {
+      return { exists: true };
+    },
+    async getChaptersMetadata(): Promise<{ exists: boolean }> {
+      return { exists: true };
+    },
+    async deleteEpisodeAssets(): Promise<void> {},
   };
 
   return {
     storage,
     get uploadAudioCalls() {
       return uploadAudioCalls;
+    },
+    get uploadArtworkCalls() {
+      return uploadArtworkCalls;
+    },
+    get uploadChaptersCalls() {
+      return uploadChaptersCalls;
     },
   };
 };
@@ -77,15 +100,29 @@ const createDependencies = (overrides: Partial<DownloadDependencies> = {}): Down
   const { repository } = createRepository();
   const { storage } = createStorage();
 
-  return {
+  const dependencies: DownloadDependencies = {
     repository,
     async downloadAudio(): Promise<void> {},
+    async downloadArtwork(_thumbnailUrl, outputFilePath): Promise<void> {
+      await Bun.write(outputFilePath, "artwork");
+    },
+    writeChapters: writeEpisodeChapters,
     async getVideoInfo(): Promise<Payload> {
       return createPayload();
     },
     async generateFeed(): Promise<void> {},
     getFilePath(videoId: string): string {
       const filePath = `./src/tests/data/${videoId}.download-test.mp3`;
+      testFiles.add(filePath);
+      return filePath;
+    },
+    getArtworkPath(videoId: string): string {
+      const filePath = `./src/tests/data/${videoId}.download-test.jpg`;
+      testFiles.add(filePath);
+      return filePath;
+    },
+    getChaptersPath(videoId: string): string {
+      const filePath = `./src/tests/data/${videoId}.download-test.json`;
       testFiles.add(filePath);
       return filePath;
     },
@@ -99,8 +136,9 @@ const createDependencies = (overrides: Partial<DownloadDependencies> = {}): Down
     },
     now: () => new Date("2026-01-02T03:04:05.000Z"),
     logger: createLogger(),
-    ...overrides,
   };
+
+  return { ...dependencies, ...overrides };
 };
 
 afterEach(async () => {
@@ -150,6 +188,7 @@ describe("download tests", () => {
       output: "/tmp/audio.mp3",
       cookies: "./cookies.txt",
       embedThumbnail: true,
+      embedChapters: true,
     });
     expect(calls[0].executionOptions).toEqual({ timeout: 1800000, killSignal: "SIGKILL" });
   });
@@ -205,6 +244,8 @@ describe("download tests", () => {
       video_url: "https://www.youtube.com/watch?v=downloadTest",
       video_added_date: "2026-01-02T03:04:05.000Z",
       video_path: "/tmp/audio.mp3",
+      video_artwork_path: null,
+      video_chapters_path: null,
       video_length: 123,
     });
   });
@@ -243,12 +284,21 @@ describe("download tests", () => {
     const storageState = createStorage();
     let feedVideos: Video[] = [];
     const replies: string[] = [];
+    const progress: DownloadProgress[] = [];
 
     const download = createDownloader(
       createDependencies({
         repository,
         async downloadAudio(_videoId, outputFilePath): Promise<void> {
           await Bun.write(outputFilePath, "audio");
+        },
+        async getVideoInfo(): Promise<Payload> {
+          return createPayload({
+            chapters: [
+              { start_time: 0, end_time: 60, title: "Intro" },
+              { start_time: 60, end_time: 123, title: "Main topic" },
+            ],
+          });
         },
         getStorage: () => storageState.storage,
         async generateFeed(videosToGenerate): Promise<void> {
@@ -257,20 +307,42 @@ describe("download tests", () => {
       })
     );
 
-    await download("downloadTestId", (text) => {
-      replies.push(text);
-    });
+    await download(
+      "downloadTestId",
+      (text) => {
+        replies.push(text);
+      },
+      (update) => progress.push(update)
+    );
 
     expect(videos).toHaveLength(1);
     expect(videos[0]).toMatchObject({
       video_id: "downloadTestId",
       video_name: "Download Test",
       video_path: "./src/tests/data/downloadTestId.download-test.mp3",
+      video_artwork_path: "./src/tests/data/downloadTestId.download-test.jpg",
+      video_chapters_path: "./src/tests/data/downloadTestId.download-test.json",
       video_added_date: "2026-01-02T03:04:05.000Z",
     });
     expect(feedVideos).toEqual(videos);
     expect(storageState.uploadAudioCalls).toBe(1);
+    expect(storageState.uploadArtworkCalls).toBe(1);
+    expect(storageState.uploadChaptersCalls).toBe(1);
     expect(replies).toEqual(["RSS feed was successfully updated."]);
+    expect(progress.map(({ stage, percent }) => [stage, percent])).toEqual([
+      ["lookup", 5],
+      ["download", 12],
+      ["validate", 48],
+      ["metadata", 54],
+      ["chapters", 58],
+      ["artwork", 64],
+      ["upload-audio", 72],
+      ["upload-artwork", 80],
+      ["upload-chapters", 86],
+      ["persist", 92],
+      ["publish-feed", 97],
+      ["completed", 100],
+    ]);
   });
 
   it("should not save video info when downloaded file is missing", async () => {
@@ -304,6 +376,94 @@ describe("download tests", () => {
     expect(feedCalls).toBe(0);
     expect(replies).toEqual(["Something went wrong. Please try again later..."]);
     expect(errors.some((message) => JSON.parse(message).stage === "validate")).toBe(true);
+  });
+
+  it("should publish normally when yt-dlp did not provide chapters", async () => {
+    const { repository, videos } = createRepository();
+    const storageState = createStorage();
+    const result = await createDownloader(
+      createDependencies({
+        repository,
+        async downloadAudio(_videoId, outputFilePath): Promise<void> {
+          await Bun.write(outputFilePath, "audio");
+        },
+        getStorage: () => storageState.storage,
+      })
+    )("noChaptersVideo");
+
+    expect(result).toEqual({ status: "published" });
+    expect(videos[0].video_chapters_path).toBeNull();
+    expect(storageState.uploadChaptersCalls).toBe(0);
+  });
+
+  it("should roll back uploaded audio and artwork when artwork upload fails", async () => {
+    const { repository, videos } = createRepository();
+    const deletedAssets: Array<[string, string, string | null | undefined]> = [];
+    const storage: Storage = {
+      ...createStorage().storage,
+      async uploadArtwork(): Promise<void> {
+        throw new Error("Artwork upload failed");
+      },
+      async deleteEpisodeAssets(videoId, audioPath, artworkPath): Promise<void> {
+        deletedAssets.push([videoId, audioPath, artworkPath]);
+      },
+    };
+    const result = await createDownloader(
+      createDependencies({
+        repository,
+        async downloadAudio(_videoId, outputFilePath): Promise<void> {
+          await Bun.write(outputFilePath, "audio");
+        },
+        getStorage: () => storage,
+      })
+    )("rollbackAssets");
+
+    expect(result).toEqual({ status: "failed" });
+    expect(videos).toEqual([]);
+    expect(deletedAssets).toEqual([
+      [
+        "rollbackAssets",
+        "./src/tests/data/rollbackAssets.download-test.mp3",
+        "./src/tests/data/rollbackAssets.download-test.jpg",
+      ],
+    ]);
+  });
+
+  it("should roll back chapter assets when chapter upload fails", async () => {
+    const { repository, videos } = createRepository();
+    const deletedAssets: Array<[string, string, string | null | undefined, string | null | undefined]> = [];
+    const storage: Storage = {
+      ...createStorage().storage,
+      async uploadChapters(): Promise<void> {
+        throw new Error("Chapter upload failed");
+      },
+      async deleteEpisodeAssets(videoId, audioPath, artworkPath, chaptersPath): Promise<void> {
+        deletedAssets.push([videoId, audioPath, artworkPath, chaptersPath]);
+      },
+    };
+    const result = await createDownloader(
+      createDependencies({
+        repository,
+        async downloadAudio(_videoId, outputFilePath): Promise<void> {
+          await Bun.write(outputFilePath, "audio");
+        },
+        async getVideoInfo(): Promise<Payload> {
+          return createPayload({ chapters: [{ start_time: 0, title: "Intro" }] });
+        },
+        getStorage: () => storage,
+      })
+    )("rollbackChapters");
+
+    expect(result).toEqual({ status: "failed" });
+    expect(videos).toEqual([]);
+    expect(deletedAssets).toEqual([
+      [
+        "rollbackChapters",
+        "./src/tests/data/rollbackChapters.download-test.mp3",
+        "./src/tests/data/rollbackChapters.download-test.jpg",
+        "./src/tests/data/rollbackChapters.download-test.json",
+      ],
+    ]);
   });
 
   it("should recover a pending publication without downloading again", async () => {

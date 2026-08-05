@@ -1,4 +1,11 @@
-import { formatSeconds, getFilePath, getYoutubeVideoId, getYoutubeVideoUrl, isS3Configured } from "../helpers.ts";
+import {
+  formatSeconds,
+  getArtworkPath,
+  getFilePath,
+  getYoutubeVideoId,
+  getYoutubeVideoUrl,
+  isS3Configured,
+} from "../helpers.ts";
 import { describe, expect, it } from "bun:test";
 
 describe("helpers tests", () => {
@@ -238,6 +245,20 @@ describe("helpers tests", () => {
       Bun.env.IS_TEST = "true";
       expect(() => getFilePath(".", "mp3")).toThrow("Invalid video ID for file path");
       expect(() => getFilePath("..", "mp3")).toThrow("Invalid video ID for file path");
+    });
+  });
+
+  describe("getArtworkPath", () => {
+    it("should build test and production artwork paths", () => {
+      Bun.env.IS_TEST = "true";
+      expect(getArtworkPath("abc_def-123")).toBe("./src/tests/data/covers/abc_def-123.jpg");
+
+      Bun.env.IS_TEST = "false";
+      expect(getArtworkPath("abc_def-123")).toBe("./public/covers/abc_def-123.jpg");
+    });
+
+    it("should reject unsafe video IDs", () => {
+      expect(() => getArtworkPath("nested/video")).toThrow("Invalid video ID for artwork path");
     });
   });
 });

@@ -13,6 +13,10 @@ export const rssFile = () => getRssFilePath();
 
 export const getAudioUrl = (videoId: string, baseUrl = serverUrl()) => `${baseUrl}/files/${videoId}.mp3`;
 
+export const getArtworkUrl = (videoId: string, baseUrl = serverUrl()) => `${baseUrl}/covers/${videoId}.jpg`;
+
+export const getChaptersUrl = (videoId: string, baseUrl = serverUrl()) => `${baseUrl}/chapters/${videoId}.json`;
+
 export interface FeedOptionsInput {
   baseUrl?: string;
   now?: Date;
@@ -49,11 +53,17 @@ export const createFeedOptions = ({ baseUrl = serverUrl(), now = new Date() }: F
     },
   ],
   itunesImage: `${baseUrl}/cover.jpg`,
+  namespaces: { podcast: true },
 });
 
 type FeedItem = Parameters<Podcast["addItem"]>[0];
 
-export const createFeedItem = (video: Video, audio?: AudioMetadata, baseUrl = serverUrl()): FeedItem => {
+export const createFeedItem = (
+  video: Video,
+  audio?: AudioMetadata,
+  baseUrl = serverUrl(),
+  includeChapters = Boolean(video.video_chapters_path)
+): FeedItem => {
   const audioUrl = getAudioUrl(video.video_id, baseUrl);
 
   return {
@@ -76,6 +86,22 @@ export const createFeedItem = (video: Video, audio?: AudioMetadata, baseUrl = se
     itunesSubtitle: video.video_name,
     itunesSummary: video.video_description ?? "",
     itunesDuration: video.video_length,
+    itunesImage: video.video_artwork_path ? getArtworkUrl(video.video_id, baseUrl) : undefined,
+    customElements:
+      includeChapters && video.video_chapters_path
+        ? [
+            {
+              "podcast:chapters": [
+                {
+                  _attr: {
+                    url: getChaptersUrl(video.video_id, baseUrl),
+                    type: "application/json+chapters",
+                  },
+                },
+              ],
+            },
+          ]
+        : undefined,
   };
 };
 
@@ -117,7 +143,15 @@ export const generateFeed = async (
       continue;
     }
 
-    feed.addItem(createFeedItem(item, includeEnclosures ? audio : undefined, baseUrl));
+    const chapters = item.video_chapters_path
+      ? await storage.getChaptersMetadata(item.video_id, item.video_chapters_path)
+      : { exists: false };
+
+    if (item.video_chapters_path && !chapters.exists) {
+      logger.info(`Chapters are unavailable for video ${item.video_id}; omitting podcast:chapters`);
+    }
+
+    feed.addItem(createFeedItem(item, includeEnclosures ? audio : undefined, baseUrl, chapters.exists));
   }
 
   await Bun.write(rssFilePath, feed.buildXml({ indent: "  " }));

@@ -5,6 +5,8 @@ youtube2rss.test.db
 # Public folder
 public/files/*
 public/rss.xml
+public/covers/*
+public/chapters/*
 
 # Cookies file
 cookies.txt
