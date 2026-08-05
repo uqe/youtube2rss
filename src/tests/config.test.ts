@@ -1,5 +1,7 @@
 import {
+  getAdminPassword,
   getBotToken,
+  getCoversDir,
   getDbFileName,
   getFilesDir,
   getLogLevel,
@@ -34,6 +36,7 @@ describe("config tests", () => {
     "TELEGRAM_BOT_TOKEN",
     "PORT",
     "LOG_LEVEL",
+    "ADMIN_PASSWORD",
     "TELEGRAM_WHITELIST",
     "YOUTUBE_COOKIES_FROM_BROWSER",
     "YOUTUBE_COOKIES_PATH",
@@ -113,6 +116,18 @@ describe("config tests", () => {
     it("should return production directory when not in test environment", () => {
       Bun.env.IS_TEST = "false";
       expect(getFilesDir()).toBe("./public/files");
+    });
+  });
+
+  describe("getCoversDir", () => {
+    it("should return test artwork directory when in test environment", () => {
+      Bun.env.IS_TEST = "true";
+      expect(getCoversDir()).toBe("./src/tests/data/covers");
+    });
+
+    it("should return public artwork directory outside the test environment", () => {
+      Bun.env.IS_TEST = "false";
+      expect(getCoversDir()).toBe("./public/covers");
     });
   });
 
@@ -413,6 +428,16 @@ describe("config tests", () => {
     });
   });
 
+  describe("getAdminPassword", () => {
+    it("should trim the configured admin password", () => {
+      expect(getAdminPassword({ ADMIN_PASSWORD: "  secret  " })).toBe("secret");
+    });
+
+    it("should keep the admin disabled when the password is missing", () => {
+      expect(getAdminPassword({})).toBeUndefined();
+    });
+  });
+
   describe("typed startup configuration", () => {
     it("should load and normalize bot configuration in one pass", () => {
       const config = loadBotAppConfig({
@@ -443,9 +468,10 @@ describe("config tests", () => {
     });
 
     it("should load validated server configuration", () => {
-      expect(loadServerAppConfig({ PORT: "8080", LOG_LEVEL: "warn" })).toEqual({
+      expect(loadServerAppConfig({ PORT: "8080", LOG_LEVEL: "warn", ADMIN_PASSWORD: "secret" })).toEqual({
         port: 8080,
         logLevel: "warn",
+        adminPassword: "secret",
       });
     });
   });

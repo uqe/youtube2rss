@@ -13,6 +13,7 @@ export interface AppConfig {
   serverUrl: string;
   rssFilePath: string;
   filesDir: string;
+  chaptersDir: string;
   dbFileName: string;
   youtubeDownloadTimeoutMs: number;
   youtubeDlAuthOptions: YoutubeDlAuthOptions;
@@ -27,6 +28,7 @@ export interface BotAppConfig extends AppConfig {
 export interface ServerAppConfig {
   port: number;
   logLevel: LogLevel;
+  adminPassword?: string;
 }
 
 export const isTestEnv = (environment: Environment = Bun.env) => environment.IS_TEST === "true";
@@ -44,6 +46,12 @@ export const getRssFilePath = (environment: Environment = Bun.env) =>
 
 export const getFilesDir = (environment: Environment = Bun.env) =>
   isTestEnv(environment) ? "./src/tests/data" : "./public/files";
+
+export const getCoversDir = (environment: Environment = Bun.env) =>
+  isTestEnv(environment) ? "./src/tests/data/covers" : "./public/covers";
+
+export const getChaptersDir = (environment: Environment = Bun.env) =>
+  isTestEnv(environment) ? "./src/tests/data/chapters" : "./public/chapters";
 
 export const getDbFileName = (environment: Environment = Bun.env) =>
   isTestEnv(environment) ? "youtube2rss.test.db" : "youtube2rss.db";
@@ -173,6 +181,8 @@ export const getLogLevel = (environment: Environment = Bun.env): LogLevel => {
   return logLevel as LogLevel;
 };
 
+export const getAdminPassword = (environment: Environment = Bun.env) => getOptionalEnv("ADMIN_PASSWORD", environment);
+
 export const parseIntegerList = (value?: string | null): number[] => {
   if (!value) {
     return [];
@@ -196,6 +206,7 @@ export const loadAppConfig = (environment: Environment = Bun.env): AppConfig => 
   serverUrl: getRequiredServerUrl(environment),
   rssFilePath: getRssFilePath(environment),
   filesDir: getFilesDir(environment),
+  chaptersDir: getChaptersDir(environment),
   dbFileName: getDbFileName(environment),
   youtubeDownloadTimeoutMs: getYoutubeDownloadTimeoutMs(environment),
   youtubeDlAuthOptions: getYoutubeDlAuthOptions(environment),
@@ -211,4 +222,5 @@ export const loadBotAppConfig = (environment: Environment = Bun.env): BotAppConf
 export const loadServerAppConfig = (environment: Environment = Bun.env): ServerAppConfig => ({
   port: getPort(environment),
   logLevel: getLogLevel(environment),
+  adminPassword: getAdminPassword(environment),
 });

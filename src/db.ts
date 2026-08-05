@@ -24,9 +24,14 @@ export const createDatabaseFactory = (getFileName: () => string = getDbFileName)
 
 const defaultDatabaseFactory = createDatabaseFactory();
 
-export const latestDatabaseVersion = 1;
+export const latestDatabaseVersion = 4;
 
 export type PublicationStatus = "pending" | "published";
+
+export interface StoredVideo extends Video {
+  publication_status: PublicationStatus;
+  is_deleted: boolean;
+}
 
 export const dbName = () => defaultDatabaseFactory.fileName();
 
@@ -82,7 +87,34 @@ const migrateToVersionOne = (db: Database) => {
   }
 
   db.run("CREATE UNIQUE INDEX IF NOT EXISTS videos_video_id_unique ON videos (video_id)");
-  db.run(`PRAGMA user_version = ${latestDatabaseVersion}`);
+  db.run("PRAGMA user_version = 1");
+};
+
+const migrateToVersionTwo = (db: Database) => {
+  const columns = db.query("PRAGMA table_info(videos)").all() as Array<{ name: string }>;
+  if (!columns.some(({ name }) => name === "is_deleted")) {
+    db.run("ALTER TABLE videos ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1))");
+  }
+
+  db.run("PRAGMA user_version = 2");
+};
+
+const migrateToVersionThree = (db: Database) => {
+  const columns = db.query("PRAGMA table_info(videos)").all() as Array<{ name: string }>;
+  if (!columns.some(({ name }) => name === "video_artwork_path")) {
+    db.run("ALTER TABLE videos ADD COLUMN video_artwork_path TEXT");
+  }
+
+  db.run("PRAGMA user_version = 3");
+};
+
+const migrateToVersionFour = (db: Database) => {
+  const columns = db.query("PRAGMA table_info(videos)").all() as Array<{ name: string }>;
+  if (!columns.some(({ name }) => name === "video_chapters_path")) {
+    db.run("ALTER TABLE videos ADD COLUMN video_chapters_path TEXT");
+  }
+
+  db.run("PRAGMA user_version = 4");
 };
 
 const migrateDatabase = (db: Database) => {
@@ -94,6 +126,18 @@ const migrateDatabase = (db: Database) => {
 
   if (version < 1) {
     db.transaction(() => migrateToVersionOne(db))();
+  }
+
+  if (version < 2) {
+    db.transaction(() => migrateToVersionTwo(db))();
+  }
+
+  if (version < 3) {
+    db.transaction(() => migrateToVersionThree(db))();
+  }
+
+  if (version < 4) {
+    db.transaction(() => migrateToVersionFour(db))();
   }
 };
 
@@ -124,9 +168,12 @@ export const createDb = async ({
 export interface VideoRepository {
   create(video: Video, publicationStatus?: PublicationStatus): void;
   list(): Video[];
+  findById(videoId: string): StoredVideo | null;
   exists(videoId: string): boolean;
   getPublicationStatus(videoId: string): PublicationStatus | null;
   markPublished(videoId: string): void;
+  markDeleted(videoId: string): void;
+  markActive(videoId: string): void;
 }
 
 interface VideoRepositoryOptions {
@@ -139,33 +186,60 @@ export const createVideoRepository = ({
   return {
     create(video: Video, publicationStatus: PublicationStatus = "published") {
       runWithDb((db) => {
+        const values = [
+          video.video_id,
+          video.video_name,
+          video.video_description,
+          video.video_url,
+          video.video_added_date,
+          video.video_path,
+          video.video_artwork_path ?? null,
+          video.video_chapters_path ?? null,
+          video.video_length,
+          publicationStatus,
+        ];
+        const existing = db
+          .query<{ is_deleted: number }, string>("SELECT is_deleted FROM videos WHERE video_id = ?")
+          .get(video.video_id);
+
+        if (existing?.is_deleted) {
+          db.run(
+            `UPDATE videos SET
+              video_name = ?, video_description = ?, video_url = ?, video_added_date = ?, video_path = ?,
+              video_artwork_path = ?, video_chapters_path = ?, video_length = ?, publication_status = ?, is_deleted = 0
+            WHERE video_id = ?`,
+            [...values.slice(1), video.video_id]
+          );
+          return;
+        }
+
         db.run(
-          "INSERT INTO videos (video_id, video_name, video_description, video_url, video_added_date, video_path, video_length, publication_status) VALUES (?,?,?,?,?,?,?,?)",
-          [
-            video.video_id,
-            video.video_name,
-            video.video_description,
-            video.video_url,
-            video.video_added_date,
-            video.video_path,
-            video.video_length,
-            publicationStatus,
-          ]
+          "INSERT INTO videos (video_id, video_name, video_description, video_url, video_added_date, video_path, video_artwork_path, video_chapters_path, video_length, publication_status) VALUES (?,?,?,?,?,?,?,?,?,?)",
+          values
         );
       }, dbFactory);
     },
     list() {
       return runWithDb((db) => {
         const query = db.query<Video, null>(
-          "SELECT video_id, video_name, video_description, video_url, video_added_date, video_path, video_length FROM videos ORDER BY id"
+          "SELECT video_id, video_name, video_description, video_url, video_added_date, video_path, video_artwork_path, video_chapters_path, video_length FROM videos WHERE is_deleted = 0 ORDER BY id"
         );
         return query.all(null);
+      }, dbFactory);
+    },
+    findById(videoId: string) {
+      return runWithDb((db) => {
+        const query = db.query<Omit<StoredVideo, "is_deleted"> & { is_deleted: number }, string>(
+          "SELECT video_id, video_name, video_description, video_url, video_added_date, video_path, video_artwork_path, video_chapters_path, video_length, publication_status, is_deleted FROM videos WHERE video_id = ?"
+        );
+        const video = query.get(videoId);
+        return video ? { ...video, is_deleted: Boolean(video.is_deleted) } : null;
       }, dbFactory);
     },
     exists(videoId: string) {
       return runWithDb((db) => {
         const query = db.query<{ exists_flag: number }, string>(
-          "SELECT EXISTS (SELECT 1 FROM videos WHERE video_id = ?) as exists_flag"
+          "SELECT EXISTS (SELECT 1 FROM videos WHERE video_id = ? AND is_deleted = 0) as exists_flag"
         );
         const result = query.get(videoId);
         return Boolean(result?.exists_flag);
@@ -174,7 +248,7 @@ export const createVideoRepository = ({
     getPublicationStatus(videoId: string) {
       return runWithDb((db) => {
         const query = db.query<{ publication_status: PublicationStatus }, string>(
-          "SELECT publication_status FROM videos WHERE video_id = ?"
+          "SELECT publication_status FROM videos WHERE video_id = ? AND is_deleted = 0"
         );
         return query.get(videoId)?.publication_status ?? null;
       }, dbFactory);
@@ -182,6 +256,16 @@ export const createVideoRepository = ({
     markPublished(videoId: string) {
       runWithDb((db) => {
         db.run("UPDATE videos SET publication_status = 'published' WHERE video_id = ?", [videoId]);
+      }, dbFactory);
+    },
+    markDeleted(videoId: string) {
+      runWithDb((db) => {
+        db.run("UPDATE videos SET is_deleted = 1 WHERE video_id = ?", [videoId]);
+      }, dbFactory);
+    },
+    markActive(videoId: string) {
+      runWithDb((db) => {
+        db.run("UPDATE videos SET is_deleted = 0 WHERE video_id = ?", [videoId]);
       }, dbFactory);
     },
   };
@@ -196,7 +280,9 @@ export const addVideoToDb = async (
   videoUrl: string,
   videoAddeddate: string,
   videoPath: string,
-  videoLength: number
+  videoLength: number,
+  videoArtworkPath: string | null = null,
+  videoChaptersPath: string | null = null
 ) => {
   videoRepository.create({
     video_id: videoId,
@@ -205,6 +291,8 @@ export const addVideoToDb = async (
     video_url: videoUrl,
     video_added_date: videoAddeddate,
     video_path: videoPath,
+    video_artwork_path: videoArtworkPath,
+    video_chapters_path: videoChaptersPath,
     video_length: videoLength,
   });
 };

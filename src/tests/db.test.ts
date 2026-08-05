@@ -57,6 +57,7 @@ describe("db tests", () => {
         video_url: videoUrl,
         video_added_date: videoAddeddate,
         video_path: videoPath,
+        video_artwork_path: null,
         video_length: videoLength,
       });
     });
@@ -283,6 +284,38 @@ describe("db tests", () => {
       expect(isVideoExists(videoId)).toBe(true);
       expect(isVideoExists("' OR 1=1")).toBe(false);
     });
+
+    it("should reactivate a soft-deleted video when it is downloaded again", async () => {
+      const videoId = "deletedVideo";
+      await addVideoToDb(videoId, "Old episode", null, "https://example.com/old", "2022-01-01", "/old.mp3", 100);
+      videoRepository.markDeleted(videoId);
+
+      expect(isVideoExists(videoId)).toBe(false);
+      expect(videoRepository.getPublicationStatus(videoId)).toBeNull();
+
+      videoRepository.create(
+        {
+          video_id: videoId,
+          video_name: "New episode",
+          video_description: null,
+          video_url: "https://example.com/new",
+          video_added_date: "2022-02-01",
+          video_path: "/new.mp3",
+          video_artwork_path: "/new.jpg",
+          video_length: 200,
+        },
+        "pending"
+      );
+
+      expect(videoRepository.findById(videoId)).toMatchObject({
+        video_name: "New episode",
+        video_path: "/new.mp3",
+        video_artwork_path: "/new.jpg",
+        publication_status: "pending",
+        is_deleted: false,
+      });
+      expect(videoRepository.list().map((video) => video.video_id)).toEqual([videoId]);
+    });
   });
 
   describe("createDb", () => {
@@ -348,6 +381,9 @@ describe("db tests", () => {
       expect(version.user_version).toBe(latestDatabaseVersion);
       expect(repository.list().map((video) => video.video_id)).toEqual(["legacyVideo"]);
       expect(repository.getPublicationStatus("legacyVideo")).toBe("published");
+      expect(repository.findById("legacyVideo")?.is_deleted).toBe(false);
+      expect(repository.findById("legacyVideo")?.video_artwork_path).toBeNull();
+      expect(repository.findById("legacyVideo")?.video_chapters_path).toBeNull();
     });
   });
 
@@ -387,6 +423,8 @@ describe("db tests", () => {
         video_url: "https://example.com/custom",
         video_added_date: "2026-01-01",
         video_path: "/path/custom.mp4",
+        video_artwork_path: null,
+        video_chapters_path: null,
         video_length: 321,
       };
 
@@ -406,6 +444,9 @@ describe("db tests", () => {
       expect(typeof videoRepository.exists).toBe("function");
       expect(typeof videoRepository.getPublicationStatus).toBe("function");
       expect(typeof videoRepository.markPublished).toBe("function");
+      expect(typeof videoRepository.findById).toBe("function");
+      expect(typeof videoRepository.markDeleted).toBe("function");
+      expect(typeof videoRepository.markActive).toBe("function");
     });
 
     it("create should add video using Video object", () => {
@@ -416,6 +457,7 @@ describe("db tests", () => {
         video_url: "https://example.com/repo",
         video_added_date: "2022-05-05",
         video_path: "/path/to/repo.mp4",
+        video_artwork_path: "/path/to/repo.jpg",
         video_length: 500,
       };
 
@@ -507,6 +549,30 @@ describe("db tests", () => {
       expect(() => videoRepository.create(video)).toThrow();
       expect(videoRepository.list()).toHaveLength(1);
     });
+
+    it("should soft-delete videos without removing their database records", () => {
+      const video: Video = {
+        video_id: "softDeleteVideo",
+        video_name: "Soft Delete Video",
+        video_description: null,
+        video_url: "https://example.com/soft-delete",
+        video_added_date: "2026-01-01",
+        video_path: "/path/soft-delete.mp3",
+        video_artwork_path: null,
+        video_chapters_path: null,
+        video_length: 100,
+      };
+
+      videoRepository.create(video);
+      videoRepository.markDeleted(video.video_id);
+
+      expect(videoRepository.list()).toEqual([]);
+      expect(videoRepository.exists(video.video_id)).toBe(false);
+      expect(videoRepository.findById(video.video_id)).toMatchObject({ ...video, is_deleted: true });
+
+      videoRepository.markActive(video.video_id);
+      expect(videoRepository.list()).toEqual([video]);
+    });
   });
 
   describe("createVideoRepository", () => {
@@ -519,6 +585,9 @@ describe("db tests", () => {
       expect(typeof repo.exists).toBe("function");
       expect(typeof repo.getPublicationStatus).toBe("function");
       expect(typeof repo.markPublished).toBe("function");
+      expect(typeof repo.findById).toBe("function");
+      expect(typeof repo.markDeleted).toBe("function");
+      expect(typeof repo.markActive).toBe("function");
     });
 
     it("new repository should share the same database", () => {

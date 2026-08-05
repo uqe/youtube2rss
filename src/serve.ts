@@ -1,4 +1,6 @@
+import { createAdminHandler } from "./admin-handler.ts";
 import { getLogLevel, getPort, loadServerAppConfig } from "./config.ts";
+import { createDb } from "./db.ts";
 import { logger } from "./logger.ts";
 import { registerShutdownHandlers } from "./shutdown.ts";
 import { extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
@@ -23,13 +25,26 @@ interface CreateServerOptions extends StaticFileHandlerOptions {
   handler?: (req: Request) => Promise<Response>;
 }
 
+interface ApplicationHandlerOptions extends StaticFileHandlerOptions {
+  staticHandler?: (req: Request) => Promise<Response>;
+  adminHandler?: (req: Request) => Promise<Response>;
+}
+
+interface StartServerOptions extends CreateServerOptions {
+  initializeDatabase?: () => Promise<void>;
+}
+
 export const mimeTypes: { [key: string]: string } = {
   ".mp3": "audio/mpeg",
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
   ".xml": "application/xml",
   ".html": "text/html",
+  ".css": "text/css",
+  ".js": "text/javascript",
+  ".json": "application/json+chapters",
 };
 
 export const getOptimalCacheControl = (contentType: string): string => {
@@ -39,8 +54,14 @@ export const getOptimalCacheControl = (contentType: string): string => {
   if (contentType === "application/xml") {
     return "public, max-age=300"; // Keep HTTP caching aligned with the RSS TTL.
   }
+  if (contentType === "application/json+chapters") {
+    return "public, max-age=300";
+  }
   if (contentType.startsWith("image/")) {
     return "public, max-age=604800"; // 7 days for images
+  }
+  if (contentType === "text/css" || contentType === "text/javascript") {
+    return "public, max-age=300";
   }
   return "public, max-age=3600"; // 1 hour for other content
 };
@@ -190,12 +211,27 @@ export const createStaticFileHandler = ({
 
 export const serverHandler = createStaticFileHandler();
 
+export const createApplicationHandler = ({
+  basePath = BASE_PATH,
+  logLevel = getLogLevel(),
+  log = logger,
+  staticHandler = createStaticFileHandler({ basePath, logLevel, log }),
+  adminHandler = createAdminHandler(),
+}: ApplicationHandlerOptions = {}) => {
+  return (request: Request) => {
+    const { pathname } = new URL(request.url);
+    return pathname === "/admin" || pathname === "/admin.html" || pathname.startsWith("/api/admin/")
+      ? adminHandler(request)
+      : staticHandler(request);
+  };
+};
+
 export const createServer = ({
   port = getPort(),
   basePath = BASE_PATH,
   logLevel = getLogLevel(),
   log = logger,
-  handler = createStaticFileHandler({ basePath, logLevel, log }),
+  handler = createApplicationHandler({ basePath, logLevel, log }),
 }: CreateServerOptions = {}) =>
   Bun.serve({
     port,
@@ -210,13 +246,15 @@ export const createServer = ({
     },
   });
 
-export const startServer = ({
+export const startServer = async ({
   port,
   basePath = BASE_PATH,
   log = logger,
   logLevel,
+  initializeDatabase = createDb,
   ...options
-}: CreateServerOptions = {}) => {
+}: StartServerOptions = {}) => {
+  await initializeDatabase();
   const config = loadServerAppConfig();
   const actualPort = port ?? config.port;
   const actualLogLevel = logLevel ?? config.logLevel;
@@ -233,5 +271,5 @@ export const startServer = ({
 };
 
 if (import.meta.main) {
-  startServer();
+  await startServer();
 }

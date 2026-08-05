@@ -1,4 +1,5 @@
 import {
+  createApplicationHandler,
   createEtag,
   createServer,
   createStaticFileHandler,
@@ -53,12 +54,25 @@ describe("serve tests", () => {
       expect(mimeTypes[".jpeg"]).toBe("image/jpeg");
     });
 
+    it("should have correct MIME type for svg", () => {
+      expect(mimeTypes[".svg"]).toBe("image/svg+xml");
+    });
+
     it("should have correct MIME type for xml", () => {
       expect(mimeTypes[".xml"]).toBe("application/xml");
     });
 
     it("should have correct MIME type for html", () => {
       expect(mimeTypes[".html"]).toBe("text/html");
+    });
+
+    it("should serve chapter JSON with the Podcasting 2.0 MIME type", () => {
+      expect(mimeTypes[".json"]).toBe("application/json+chapters");
+    });
+
+    it("should have browser-safe MIME types for admin assets", () => {
+      expect(mimeTypes[".css"]).toBe("text/css");
+      expect(mimeTypes[".js"]).toBe("text/javascript");
     });
 
     it("should return undefined for unknown extension", () => {
@@ -75,12 +89,25 @@ describe("serve tests", () => {
       expect(getOptimalCacheControl("application/xml")).toBe("public, max-age=300");
     });
 
+    it("should use short caching for chapter JSON", () => {
+      expect(getOptimalCacheControl("application/json+chapters")).toBe("public, max-age=300");
+    });
+
     it("should return 7 days cache for image/png", () => {
       expect(getOptimalCacheControl("image/png")).toBe("public, max-age=604800");
     });
 
     it("should return 7 days cache for image/jpeg", () => {
       expect(getOptimalCacheControl("image/jpeg")).toBe("public, max-age=604800");
+    });
+
+    it("should return 7 days cache for image/svg+xml", () => {
+      expect(getOptimalCacheControl("image/svg+xml")).toBe("public, max-age=604800");
+    });
+
+    it("should use short caching for admin assets", () => {
+      expect(getOptimalCacheControl("text/css")).toBe("public, max-age=300");
+      expect(getOptimalCacheControl("text/javascript")).toBe("public, max-age=300");
     });
 
     it("should return 1 hour cache for unknown content type", () => {
@@ -214,6 +241,28 @@ describe("serve tests", () => {
       } finally {
         server.stop(true);
       }
+    });
+  });
+
+  describe("createApplicationHandler", () => {
+    it("should route admin requests separately from public files", async () => {
+      const requests: string[] = [];
+      const handler = createApplicationHandler({
+        staticHandler: async (request) => {
+          requests.push(`static:${new URL(request.url).pathname}`);
+          return new Response("static");
+        },
+        adminHandler: async (request) => {
+          requests.push(`admin:${new URL(request.url).pathname}`);
+          return new Response("admin");
+        },
+      });
+
+      expect(await (await handler(new Request("http://localhost/admin"))).text()).toBe("admin");
+      expect(await (await handler(new Request("http://localhost/admin.html"))).text()).toBe("admin");
+      expect(await (await handler(new Request("http://localhost/api/admin/videos"))).text()).toBe("admin");
+      expect(await (await handler(new Request("http://localhost/rss.xml"))).text()).toBe("static");
+      expect(requests).toEqual(["admin:/admin", "admin:/admin.html", "admin:/api/admin/videos", "static:/rss.xml"]);
     });
   });
 

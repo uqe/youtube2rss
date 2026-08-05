@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>youtube2rss — feed management</title>
+    <link rel="icon" href="/admin-favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/admin.css?v=3" />
+    <script src="/admin.js?v=3" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/admin" aria-label="youtube2rss feed management">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <span>youtube2rss</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <span class="nav-current"><span class="live-dot"></span>Feed</span>
+        <a href="/rss.xml" target="_blank" rel="noreferrer">Open RSS ↗</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Feed control</p>
+          <h1 id="page-title">Published episodes</h1>
+          <p class="lede">Add YouTube videos to the podcast or remove episodes from the RSS feed.</p>
+        </div>
+        <div class="feed-count" aria-live="polite">
+          <strong id="video-count">—</strong>
+          <span>episodes</span>
+        </div>
+      </section>
+
+      <section class="add-panel" aria-labelledby="add-title">
+        <div class="panel-number">01</div>
+        <div class="panel-body">
+          <div class="panel-heading">
+            <h2 id="add-title">Add to feed</h2>
+            <span>youtube.com / youtu.be</span>
+          </div>
+          <form id="add-form">
+            <label class="sr-only" for="video-url">YouTube video URL</label>
+            <input
+              id="video-url"
+              name="url"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://www.youtube.com/watch?v=…"
+              required
+            />
+            <button class="primary-button" type="submit">
+              <span class="button-label">Add</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </form>
+          <div id="job-progress" class="job-progress" data-state="processing" hidden>
+            <div class="progress-meta" aria-live="polite">
+              <span id="progress-label">Waiting to start</span>
+              <span id="progress-value">0%</span>
+            </div>
+            <div
+              id="progress-track"
+              class="progress-track"
+              role="progressbar"
+              aria-labelledby="progress-label"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+              aria-valuetext="Waiting to start"
+            >
+              <span id="progress-fill" class="progress-fill"></span>
+            </div>
+          </div>
+          <p id="form-status" class="status-message" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="feed-panel" aria-labelledby="feed-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">RSS queue</p>
+            <h2 id="feed-title">Current feed</h2>
+          </div>
+          <button id="refresh-button" class="quiet-button" type="button">Refresh</button>
+        </div>
+
+        <div class="column-labels" aria-hidden="true">
+          <span>№</span>
+          <span>Episode</span>
+          <span>Added</span>
+          <span>Duration</span>
+          <span></span>
+        </div>
+        <div id="video-list" class="video-list" aria-live="polite" aria-busy="true">
+          <div class="loading-row"><span></span><span></span><span></span></div>
+          <div class="loading-row"><span></span><span></span><span></span></div>
+          <div class="loading-row"><span></span><span></span><span></span></div>
+        </div>
+      </section>
+    </main>
+
+    <template id="empty-template">
+      <div class="empty-state">
+        <span class="empty-mark" aria-hidden="true">00:00</span>
+        <h3>The feed is empty</h3>
+        <p>Paste a link above and the first episode will appear here after processing.</p>
+      </div>
+    </template>
+  </body>
+</html>
