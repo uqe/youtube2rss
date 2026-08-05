@@ -46,7 +46,7 @@ To use the bot, you'll need to set up a Telegram bot and get an API token. The o
 
 2. Send the bot a YouTube link.
 
-3. The bot will download the video, extract the audio, and generate an RSS feed.
+3. The bot will download the video, extract MP3 audio with embedded cover art and YouTube chapters, prepare square episode artwork, and generate an RSS feed. When `yt-dlp` returns chapters, the bot also publishes a Podcasting 2.0 chapter JSON file and references it from the episode RSS item.
 
 4. Host the RSS feed on your server and subscribe to it in your favorite podcast app.
 
@@ -91,11 +91,23 @@ Run formatting, linting, TypeScript validation, and the complete environment-iso
 bun run check
 ```
 
+## Web administration
+
+Set `ADMIN_PASSWORD` in `.env` and restart the static server. Then open:
+
+```text
+https://your-server.example/admin
+```
+
+Use `admin` as the username and the configured `ADMIN_PASSWORD` as the password. When the variable is empty, the admin page and API return `404` and the public RSS server continues to work normally.
+
+The page shows the active RSS episodes, reports real publication stages while adding a YouTube link, and accepts episode removal. Removing an episode marks it as deleted in SQLite, rebuilds and uploads the RSS feed, and deletes its MP3, episode artwork, and chapter JSON from both the local `public` directory and S3. The database row is preserved.
+
 ## S3 file storage usage (optional)
 
 1. Fill env variables: `TELEGRAM_WHITELIST`, `TELEGRAM_BOT_TOKEN`, `SERVER_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_ENDPOINT` and `S3_SECRET_KEY` in the `.env` or `.env.dev` file.
 
-If all variables are set, the bot will store `.mp3` files and generated `rss.xml` file in your S3 bucket. I'm using [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/) as S3 compatible storage. The [free plan](https://developers.cloudflare.com/r2/pricing/) is sufficient for my needs.
+If all variables are set, the bot will store `.mp3` files under `files/`, episode artwork under `covers/`, optional Podcasting 2.0 chapter documents under `chapters/`, and the generated `rss.xml` file in your S3 bucket. I'm using [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/) as S3 compatible storage. The [free plan](https://developers.cloudflare.com/r2/pricing/) is sufficient for my needs.
 
 ## License
 
