@@ -84,12 +84,19 @@ const renderFeed = (videos: Video[], options: Parameters<typeof generateFeed>[1]
   });
 
 describe("generate-feed tests", () => {
+  const originalIsTest = Bun.env.IS_TEST;
+
   beforeAll(async () => {
+    Bun.env.IS_TEST = "true";
     await renderFeed(getAllVideos());
   });
 
   afterAll(async () => {
-    await Bun.file(rssFile()).delete();
+    const generatedRss = Bun.file(rssFile());
+    if (await generatedRss.exists()) {
+      await generatedRss.delete();
+    }
+    Bun.env.IS_TEST = originalIsTest;
   });
 
   describe("generateFeed", () => {
