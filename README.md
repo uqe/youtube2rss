@@ -101,6 +101,8 @@ https://your-server.example/admin
 
 Use `admin` as the username and the configured `ADMIN_PASSWORD` as the password. When the variable is empty, the admin page and API return `404` and the public RSS server continues to work normally.
 
+![youtube2rss web administration](docs/admin.jpg)
+
 The page shows the active RSS episodes, reports real publication stages while adding a YouTube link, and accepts episode removal. Removing an episode marks it as deleted in SQLite, rebuilds and uploads the RSS feed, and deletes its MP3, episode artwork, and chapter JSON from both the local `public` directory and S3. The database row is preserved.
 
 ## S3 file storage usage (optional)
