@@ -1,6 +1,7 @@
 import {
   formatSeconds,
   getArtworkPath,
+  getChaptersPath,
   getFilePath,
   getYoutubeVideoId,
   getYoutubeVideoUrl,
@@ -115,6 +116,23 @@ describe("helpers tests", () => {
       const id = "dQw4w9WgXcQ";
       expect(getYoutubeVideoId(`https://notyoutube.com/watch?v=${id}`)).toBeNull();
       expect(getYoutubeVideoId(`https://youtube.com.evil.test/watch?v=${id}`)).toBeNull();
+    });
+
+    it("should reject unsupported URL protocols", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`ftp://youtube.com/watch?v=${id}`)).toBeNull();
+    });
+
+    it("should reject YouTube paths without a video ID", () => {
+      expect(getYoutubeVideoId("https://youtu.be/")).toBeNull();
+      expect(getYoutubeVideoId("https://youtube.com/shorts/")).toBeNull();
+      expect(getYoutubeVideoId("https://youtube.com/watch")).toBeNull();
+    });
+
+    it("should accept a fragment after a valid video ID", () => {
+      const id = "dQw4w9WgXcQ";
+      expect(getYoutubeVideoId(`https://youtube.com/watch?v=${id}#t=90`)).toBe(id);
+      expect(getYoutubeVideoId(`https://youtu.be/${id}#chapter`)).toBe(id);
     });
   });
 
@@ -259,6 +277,22 @@ describe("helpers tests", () => {
 
     it("should reject unsafe video IDs", () => {
       expect(() => getArtworkPath("nested/video")).toThrow("Invalid video ID for artwork path");
+    });
+  });
+
+  describe("getChaptersPath", () => {
+    it("should build test and production chapter paths", () => {
+      Bun.env.IS_TEST = "true";
+      expect(getChaptersPath("abc_def-123")).toBe("./src/tests/data/chapters/abc_def-123.json");
+
+      Bun.env.IS_TEST = "false";
+      expect(getChaptersPath("abc_def-123")).toBe("./public/chapters/abc_def-123.json");
+    });
+
+    it("should reject unsafe video IDs", () => {
+      expect(() => getChaptersPath("nested/video")).toThrow("Invalid video ID for chapters path");
+      expect(() => getChaptersPath("..")).toThrow("Invalid video ID for chapters path");
+      expect(() => getChaptersPath("")).toThrow("Invalid video ID for chapters path");
     });
   });
 });

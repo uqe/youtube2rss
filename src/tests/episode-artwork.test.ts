@@ -46,4 +46,84 @@ describe("episode artwork", () => {
       "Unsupported thumbnail protocol"
     );
   });
+
+  it("should pass an HTTP URL object to the thumbnail fetcher", async () => {
+    let receivedUrl: URL | undefined;
+
+    await downloadEpisodeArtwork("http://images.example.com/thumbnail.jpg", outputPath, {
+      async fetchThumbnail(url) {
+        receivedUrl = url;
+        return new Response("thumbnail-data");
+      },
+      async processArtwork(_sourcePath, preparedPath) {
+        await Bun.write(preparedPath, "prepared-jpeg");
+      },
+    });
+
+    expect(receivedUrl?.href).toBe("http://images.example.com/thumbnail.jpg");
+  });
+
+  it("should clean temporary files when artwork processing fails", async () => {
+    await expect(
+      downloadEpisodeArtwork("https://i.ytimg.com/example.jpg", outputPath, {
+        async fetchThumbnail() {
+          return new Response("thumbnail-data");
+        },
+        async processArtwork() {
+          throw new Error("processor failed");
+        },
+      })
+    ).rejects.toThrow("processor failed");
+
+    expect(await Bun.file(outputPath).exists()).toBe(false);
+    expect(await readdir(artworkDirectory)).toEqual([]);
+  });
+
+  it("should reject a processor that does not create an output file", async () => {
+    await expect(
+      downloadEpisodeArtwork("https://i.ytimg.com/example.jpg", outputPath, {
+        async fetchThumbnail() {
+          return new Response("thumbnail-data");
+        },
+        async processArtwork() {},
+      })
+    ).rejects.toThrow("missing or empty");
+
+    expect(await readdir(artworkDirectory)).toEqual([]);
+  });
+
+  it("should reject and remove an empty prepared file", async () => {
+    await expect(
+      downloadEpisodeArtwork("https://i.ytimg.com/example.jpg", outputPath, {
+        async fetchThumbnail() {
+          return new Response("thumbnail-data");
+        },
+        async processArtwork(_sourcePath, preparedPath) {
+          await Bun.write(preparedPath, "");
+        },
+      })
+    ).rejects.toThrow("missing or empty");
+
+    expect(await readdir(artworkDirectory)).toEqual([]);
+  });
+
+  it("should preserve an existing published artwork file on failure", async () => {
+    await Bun.write(outputPath, "existing-artwork");
+
+    await expect(
+      downloadEpisodeArtwork("https://i.ytimg.com/example.jpg", outputPath, {
+        async fetchThumbnail() {
+          return new Response(null, { status: 503 });
+        },
+      })
+    ).rejects.toThrow("HTTP 503");
+
+    expect(await Bun.file(outputPath).text()).toBe("existing-artwork");
+    expect(await readdir(artworkDirectory)).toEqual(["episode-artwork-test.jpg"]);
+  });
+
+  it("should reject malformed thumbnail URLs before creating directories", async () => {
+    await expect(downloadEpisodeArtwork("not a URL", outputPath)).rejects.toThrow();
+    expect(await Bun.file(artworkDirectory).exists()).toBe(false);
+  });
 });

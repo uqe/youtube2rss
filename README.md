@@ -120,5 +120,5 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - [x] Update README
 - [x] Add pm2
 - [x] Add structured download logging
-- [ ] Add thumbnails podcast episodes
-- [ ] Parse timestamps in video description and add them to the podcast feed
+- [x] Add thumbnails podcast episodes
+- [x] Parse timestamps in video description and add them to the podcast feed
