@@ -1,9 +1,10 @@
+import { describe, expect, it } from "bun:test";
+
 import { AdminVideoNotFoundError, createAdminService } from "../admin.ts";
 import type { AdminRepository } from "../admin.ts";
 import type { StoredVideo } from "../db.ts";
 import type { Storage } from "../storage.ts";
 import type { Video } from "../types.ts";
-import { describe, expect, it } from "bun:test";
 
 const createStoredVideo = (overrides: Partial<StoredVideo> = {}): StoredVideo => ({
   video_id: "adminVideo01",
@@ -31,11 +32,15 @@ const createRepository = (initialVideos: StoredVideo[]) => {
     },
     markDeleted(videoId) {
       const video = videos.get(videoId);
-      if (video) video.is_deleted = true;
+      if (video) {
+        video.is_deleted = true;
+      }
     },
     markActive(videoId) {
       const video = videos.get(videoId);
-      if (video) video.is_deleted = false;
+      if (video) {
+        video.is_deleted = false;
+      }
     },
   };
   return { repository, videos };
@@ -68,7 +73,11 @@ describe("admin service", () => {
     const newer = createStoredVideo({ video_id: "newerVideo01", video_added_date: "2026-02-01" });
     const deleted = createStoredVideo({ video_id: "deletedVid01", is_deleted: true });
     const { repository } = createRepository([older, newer, deleted]);
-    const service = createAdminService({ repository, storage: createStorage(), enqueue: immediateQueue });
+    const service = createAdminService({
+      repository,
+      storage: createStorage(),
+      enqueue: immediateQueue,
+    });
 
     expect(service.listVideos().map((video) => video.video_id)).toEqual(["newerVideo01", "olderVideo01"]);
   });
@@ -110,7 +119,9 @@ describe("admin service", () => {
       }),
       async feedGenerator(feedVideos): Promise<void> {
         feedSnapshots.push(feedVideos.map((item) => item.video_id));
-        if (feedSnapshots.length === 1) throw new Error("RSS upload failed");
+        if (feedSnapshots.length === 1) {
+          throw new Error("RSS upload failed");
+        }
       },
       enqueue: immediateQueue,
       log: { error(): void {} },
@@ -125,7 +136,11 @@ describe("admin service", () => {
 
   it("should reject unknown video IDs", async () => {
     const { repository } = createRepository([]);
-    const service = createAdminService({ repository, storage: createStorage(), enqueue: immediateQueue });
+    const service = createAdminService({
+      repository,
+      storage: createStorage(),
+      enqueue: immediateQueue,
+    });
 
     await expect(service.deleteVideo("missingVideo")).rejects.toBeInstanceOf(AdminVideoNotFoundError);
   });

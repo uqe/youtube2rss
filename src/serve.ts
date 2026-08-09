@@ -1,9 +1,10 @@
+import { extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
+
 import { createAdminHandler } from "./admin-handler.ts";
 import { getLogLevel, getPort, loadServerAppConfig } from "./config.ts";
 import { createDb } from "./db.ts";
 import { logger } from "./logger.ts";
 import { registerShutdownHandlers } from "./shutdown.ts";
-import { extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
 
 const BASE_PATH = resolve("./public");
 
@@ -74,16 +75,24 @@ export const createEtag = ({ size, mtime }: { size: number; mtime?: Date | null 
 };
 
 export const parseRangeHeader = (rangeHeader: string, fileSize: number): [number, number] | null => {
-  if (fileSize <= 0) return null;
+  if (fileSize <= 0) {
+    return null;
+  }
 
   const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
 
-  if (!match[1] && !match[2]) return null;
+  if (!match[1] && !match[2]) {
+    return null;
+  }
 
   if (!match[1]) {
     const suffixLength = Number.parseInt(match[2], 10);
-    if (Number.isNaN(suffixLength) || suffixLength <= 0) return null;
+    if (Number.isNaN(suffixLength) || suffixLength <= 0) {
+      return null;
+    }
     return [Math.max(fileSize - suffixLength, 0), fileSize - 1];
   }
 
@@ -123,7 +132,9 @@ export const createStaticFileHandler = ({
     const { pathname, safePath, filePath, isInsideBasePath } = resolveSafePath(url.pathname, basePath);
 
     if (!isInsideBasePath) {
-      if (logLevel !== "error") log.warn(`[403] Attempted path traversal: ${pathname}`);
+      if (logLevel !== "error") {
+        log.warn(`[403] Attempted path traversal: ${pathname}`);
+      }
       return new Response("Forbidden", { status: 403 });
     }
 
@@ -139,7 +150,9 @@ export const createStaticFileHandler = ({
       const exists = await file.exists();
 
       if (!exists) {
-        if (logLevel !== "error") log.warn(`[404] Not found: ${safePath}`);
+        if (logLevel !== "error") {
+          log.warn(`[404] Not found: ${safePath}`);
+        }
         return new Response("File not found", { status: 404 });
       }
 
@@ -258,7 +271,13 @@ export const startServer = async ({
   const config = loadServerAppConfig();
   const actualPort = port ?? config.port;
   const actualLogLevel = logLevel ?? config.logLevel;
-  const server = createServer({ ...options, port: actualPort, basePath, log, logLevel: actualLogLevel });
+  const server = createServer({
+    ...options,
+    port: actualPort,
+    basePath,
+    log,
+    logLevel: actualLogLevel,
+  });
   registerShutdownHandlers({
     async shutdown(signal) {
       log.info(`Received ${signal}; stopping static file server`);

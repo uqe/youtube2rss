@@ -1,5 +1,6 @@
-import { registerShutdownHandlers } from "../shutdown.ts";
 import { describe, expect, it } from "bun:test";
+
+import { registerShutdownHandlers } from "../shutdown.ts";
 
 const createSignalTarget = () => {
   const listeners = new Map<NodeJS.Signals, Set<() => void>>();

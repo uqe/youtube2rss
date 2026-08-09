@@ -1,5 +1,6 @@
-import { createSerialTaskQueue } from "../task-queue.ts";
 import { describe, expect, it } from "bun:test";
+
+import { createSerialTaskQueue } from "../task-queue.ts";
 
 describe("serial task queue", () => {
   it("should return the task result", async () => {
@@ -35,7 +36,7 @@ describe("serial task queue", () => {
       () =>
         new Promise<void>((resolve) => {
           releaseFirst = resolve;
-        })
+        }),
     );
     const second = enqueue(async () => {
       secondStarted = true;
@@ -102,7 +103,7 @@ describe("serial task queue", () => {
       () =>
         new Promise<void>((resolve) => {
           releaseBlocked = resolve;
-        })
+        }),
     );
 
     await expect(freeQueue(async () => "done")).resolves.toBe("done");

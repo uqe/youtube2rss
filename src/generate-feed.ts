@@ -1,9 +1,10 @@
+import { Podcast } from "podcast";
+
 import { getRequiredServerUrl, getRssFilePath } from "./config.ts";
 import { logger } from "./logger.ts";
 import { getStorage } from "./storage.ts";
 import type { AudioMetadata, Storage } from "./storage.ts";
 import type { Video } from "./types.ts";
-import { Podcast } from "podcast";
 
 const repositoryUrl = "https://github.com/uqe/youtube2rss";
 
@@ -62,7 +63,7 @@ export const createFeedItem = (
   video: Video,
   audio?: AudioMetadata,
   baseUrl = serverUrl(),
-  includeChapters = Boolean(video.video_chapters_path)
+  includeChapters = Boolean(video.video_chapters_path),
 ): FeedItem => {
   const audioUrl = getAudioUrl(video.video_id, baseUrl);
 
@@ -130,10 +131,10 @@ export const generateFeed = async (
     publish = true,
     verifyAudio = true,
     includeEnclosures = true,
-  }: GenerateFeedOptions = {}
+  }: GenerateFeedOptions = {},
 ) => {
   const feed = new Podcast(createFeedOptions({ baseUrl, now }));
-  const orderedVideos = [...allVideos].sort((left, right) => getTimestamp(right) - getTimestamp(left));
+  const orderedVideos = allVideos.toSorted((left, right) => getTimestamp(right) - getTimestamp(left));
 
   for (const item of orderedVideos) {
     const audio = verifyAudio ? await storage.getAudioMetadata(item.video_id, item.video_path) : { exists: true };

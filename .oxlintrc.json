@@ -1,15 +1,51 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn"
+  },
   "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/logs/**", "**/public/files/**"],
   "rules": {
-    "no-unused-vars": "warn",
-    "@typescript-eslint/no-explicit-any": "warn",
-    "prefer-const": "warn",
-    "@typescript-eslint/no-non-null-assertion": "warn",
-    "no-param-reassign": "error",
-    "default-param-last": "error",
-    "@typescript-eslint/prefer-enum-initializers": "error",
+    "no-unused-vars": "error",
+    "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-inferrable-types": "error",
-    "no-else-return": "error"
-  }
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/prefer-enum-initializers": "error",
+    "curly": "error",
+    "default-param-last": "error",
+    "eqeqeq": "error",
+    "import/no-cycle": "error",
+    "import/no-duplicates": "error",
+    "no-alert": "off",
+    "no-await-in-loop": "off",
+    "no-debugger": "error",
+    "no-else-return": "error",
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-new-func": "error",
+    "no-param-reassign": "error",
+    "no-var": "error",
+    "object-shorthand": "error",
+    "prefer-const": "error",
+    "prefer-object-spread": "error",
+    "prefer-template": "error",
+    "promise/no-new-statics": "error",
+    "promise/no-return-in-finally": "error",
+    "promise/no-return-wrap": "error",
+    "promise/param-names": "error",
+    "promise/valid-params": "error",
+    "typescript/consistent-type-imports": "error",
+    "unicorn/error-message": "error",
+    "unicorn/throw-new-error": "error"
+  },
+  "overrides": [
+    {
+      "files": ["src/tests/**/*.ts"],
+      "rules": {
+        "no-shadow": "off"
+      }
+    }
+  ]
 }

@@ -1,3 +1,7 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
+import { mkdir, rm } from "node:fs/promises";
+import { resolve } from "node:path";
+
 import {
   createApplicationHandler,
   createEtag,
@@ -10,9 +14,6 @@ import {
   resolveSafePath,
   serverHandler,
 } from "../serve.ts";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
-import { mkdir, rm } from "node:fs/promises";
-import { resolve } from "node:path";
 
 const testPublicDir = "./src/tests/data/static-public";
 const testPublicPath = resolve(testPublicDir);
@@ -402,7 +403,7 @@ describe("serve tests", () => {
         const response = await serverHandler(
           new Request("http://localhost/test-suffix-range.mp3", {
             headers: { Range: "bytes=-4" },
-          })
+          }),
         );
 
         expect(response.status).toBe(206);
@@ -419,7 +420,7 @@ describe("serve tests", () => {
         const response = await serverHandler(
           new Request("http://localhost/test-invalid-range.mp3", {
             headers: { Range: "bytes=20-30" },
-          })
+          }),
         );
 
         expect(response.status).toBe(416);
@@ -437,7 +438,7 @@ describe("serve tests", () => {
           new Request("http://localhost/test-head-range.mp3", {
             method: "HEAD",
             headers: { Range: "bytes=2-5" },
-          })
+          }),
         );
 
         expect(response.status).toBe(206);

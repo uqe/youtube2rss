@@ -28,7 +28,9 @@ export const registerShutdownHandlers = ({
   const handlers = new Map<NodeJS.Signals, () => void>();
   for (const signal of signals) {
     const handler = () => {
-      if (isShuttingDown) return;
+      if (isShuttingDown) {
+        return;
+      }
       isShuttingDown = true;
       dispose();
       void shutdown(signal);

@@ -1,5 +1,6 @@
-import { createS3Storage } from "../s3.ts";
 import { describe, expect, it } from "bun:test";
+
+import { createS3Storage } from "../s3.ts";
 
 const createClient = ({ coverExists = false, failWrite = false } = {}) => {
   const writes: string[] = [];

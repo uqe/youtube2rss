@@ -40,8 +40,14 @@ const formatDuration = (seconds) => {
 
 const formatDate = (value) => {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 };
 
 const setStatus = (message = "", state = "") => {
@@ -71,7 +77,9 @@ const createTextElement = (tag, className, text) => {
 
 const deleteVideo = async (video, button) => {
   const confirmed = window.confirm(`Remove “${video.title}” from the RSS feed and delete its audio and artwork?`);
-  if (!confirmed) return;
+  if (!confirmed) {
+    return;
+  }
 
   button.disabled = true;
   button.textContent = "Deleting…";
@@ -106,7 +114,7 @@ const createVideoRow = (video, index) => {
   metadata.className = "row-meta";
   metadata.append(
     createTextElement("time", "row-date", formatDate(video.addedAt)),
-    createTextElement("span", "row-duration", formatDuration(video.duration))
+    createTextElement("span", "row-duration", formatDuration(video.duration)),
   );
   row.append(metadata);
 
@@ -138,7 +146,7 @@ const renderLoadError = (error) => {
   state.className = "error-state";
   state.append(
     createTextElement("h3", "", "Could not load the feed"),
-    createTextElement("p", "", error instanceof Error ? error.message : "Try refreshing the page.")
+    createTextElement("p", "", error instanceof Error ? error.message : "Try refreshing the page."),
   );
   elements.list.append(state);
   elements.count.textContent = "—";
@@ -162,7 +170,9 @@ const waitForJob = async (initialJob) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     const { job } = await request(`/api/admin/jobs/${encodeURIComponent(initialJob.id)}`);
     setProgress(job.progress);
-    if (job.status === "completed") return job;
+    if (job.status === "completed") {
+      return job;
+    }
   }
 };
 
@@ -186,7 +196,7 @@ elements.form.addEventListener("submit", async (event) => {
       throw new Error(
         completedJob.result === "already-published"
           ? "This video has already been added."
-          : "Could not download or publish the video."
+          : "Could not download or publish the video.",
       );
     }
 
@@ -201,7 +211,7 @@ elements.form.addEventListener("submit", async (event) => {
         percent: Number(elements.progressTrack.getAttribute("aria-valuenow")),
         message,
       },
-      "error"
+      "error",
     );
     setStatus();
   } finally {

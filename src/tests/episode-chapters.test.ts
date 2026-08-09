@@ -1,5 +1,6 @@
-import { createEpisodeChaptersDocument, writeEpisodeChapters } from "../episode-chapters.ts";
 import { afterEach, describe, expect, it } from "bun:test";
+
+import { createEpisodeChaptersDocument, writeEpisodeChapters } from "../episode-chapters.ts";
 
 const outputPath = `${import.meta.dir}/data/episode-chapters.json`;
 
@@ -20,7 +21,7 @@ describe("episode chapters", () => {
           { start_time: 120, end_time: 100, title: "Outro" },
           { start_time: 140, title: "" },
         ],
-      })
+      }),
     ).toEqual({
       version: "1.2.0",
       chapters: [
@@ -42,8 +43,8 @@ describe("episode chapters", () => {
         {
           chapters: [{ start_time: 0, end_time: 12.5, title: "Intro" }],
         },
-        outputPath
-      )
+        outputPath,
+      ),
     ).resolves.toBe(true);
 
     expect(await Bun.file(outputPath).json()).toEqual({

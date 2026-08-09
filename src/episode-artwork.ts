@@ -42,7 +42,7 @@ export const processEpisodeArtwork: ArtworkProcessor = async (sourcePath, output
       "2",
       outputPath,
     ],
-    { stdout: "ignore", stderr: "pipe" }
+    { stdout: "ignore", stderr: "pipe" },
   );
   const [exitCode, stderr] = await Promise.all([process.exited, new Response(process.stderr).text()]);
 
@@ -54,7 +54,7 @@ export const processEpisodeArtwork: ArtworkProcessor = async (sourcePath, output
 export const downloadEpisodeArtwork = async (
   thumbnailUrl: string,
   outputPath: string,
-  { fetchThumbnail = fetch, processArtwork = processEpisodeArtwork }: DownloadEpisodeArtworkOptions = {}
+  { fetchThumbnail = fetch, processArtwork = processEpisodeArtwork }: DownloadEpisodeArtworkOptions = {},
 ) => {
   const url = new URL(thumbnailUrl);
   if (url.protocol !== "https:" && url.protocol !== "http:") {

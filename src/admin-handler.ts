@@ -1,10 +1,11 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { adminService as defaultAdminService } from "./admin.ts";
 import type { AdminService } from "./admin.ts";
 import { getAdminPassword } from "./config.ts";
 import { download } from "./download.ts";
 import type { DownloadProgress, DownloadProgressHandler, DownloadResult } from "./download.ts";
 import { getYoutubeVideoId } from "./helpers.ts";
-import { timingSafeEqual } from "node:crypto";
 
 type DownloadVideo = (videoId: string, progressHandler?: DownloadProgressHandler) => Promise<DownloadResult>;
 
@@ -51,7 +52,9 @@ const unauthorizedResponse = () =>
 
 const parseVideoIdPath = (pathname: string) => {
   const match = /^\/api\/admin\/videos\/([^/]+)$/.exec(pathname);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
 
   try {
     return decodeURIComponent(match[1]);
@@ -180,6 +183,7 @@ export const createAdminHandler = ({
             result: result.status,
             progress: getTerminalProgress(result.status, currentJob.progress),
           });
+          return undefined;
         })
         .catch(() => {
           const currentJob = jobs.get(job.id) ?? job;
@@ -205,7 +209,7 @@ export const createAdminHandler = ({
           {
             error: status === 404 ? "Video not found." : "The episode could not be fully deleted. Please try again.",
           },
-          status
+          status,
         );
       }
     }

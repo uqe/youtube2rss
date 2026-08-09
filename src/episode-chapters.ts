@@ -21,14 +21,18 @@ interface YoutubeChapter {
 const getFiniteNumber = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : undefined);
 
 const normalizeChapter = (chapter: unknown): EpisodeChapter | null => {
-  if (!chapter || typeof chapter !== "object") return null;
+  if (!chapter || typeof chapter !== "object") {
+    return null;
+  }
 
   const source = chapter as YoutubeChapter;
   const startTime = getFiniteNumber(source.start_time);
   const endTime = getFiniteNumber(source.end_time);
   const title = typeof source.title === "string" ? source.title.trim() : "";
 
-  if (startTime === undefined || startTime < 0 || !title) return null;
+  if (startTime === undefined || startTime < 0 || !title) {
+    return null;
+  }
 
   return {
     startTime,
@@ -38,15 +42,19 @@ const normalizeChapter = (chapter: unknown): EpisodeChapter | null => {
 };
 
 export const createEpisodeChaptersDocument = (videoInfo: unknown): EpisodeChaptersDocument | null => {
-  if (!videoInfo || typeof videoInfo !== "object") return null;
+  if (!videoInfo || typeof videoInfo !== "object") {
+    return null;
+  }
 
   const sourceChapters = (videoInfo as { chapters?: unknown }).chapters;
-  if (!Array.isArray(sourceChapters)) return null;
+  if (!Array.isArray(sourceChapters)) {
+    return null;
+  }
 
   const chapters = sourceChapters
     .map(normalizeChapter)
     .filter((chapter): chapter is EpisodeChapter => chapter !== null)
-    .sort((left, right) => left.startTime - right.startTime);
+    .toSorted((left, right) => left.startTime - right.startTime);
 
   return chapters.length > 0 ? { version: "1.2.0", chapters } : null;
 };

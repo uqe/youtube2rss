@@ -1,3 +1,6 @@
+import { Database } from "bun:sqlite";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
+
 import {
   addVideoToDb,
   createDatabaseFactory,
@@ -10,8 +13,6 @@ import {
   videoRepository,
 } from "../db.ts";
 import type { Video } from "../types.ts";
-import { Database } from "bun:sqlite";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
 
 const testDbFile = "youtube2rss.test.db";
 const customDbFile = "./src/tests/data/youtube2rss.custom.test.db";
@@ -72,7 +73,7 @@ describe("db tests", () => {
           `https://example.com/watch?v=${id}`,
           "2022-12-12",
           `/path/to/${id}.mp4`,
-          300
+          300,
         );
       }
       const videos = getAllVideos();
@@ -91,7 +92,7 @@ describe("db tests", () => {
         "https://example.com/test.mp4",
         "2022-01-01",
         "/path/to/test.mp4",
-        456
+        456,
       );
       const videos = getAllVideos();
       expect(videos.length).toBe(1);
@@ -110,7 +111,7 @@ describe("db tests", () => {
         "https://example.com/test.mp4",
         "2022-01-01",
         "/path/to/test.mp4",
-        100
+        100,
       );
 
       const videos = getAllVideos();
@@ -129,7 +130,7 @@ describe("db tests", () => {
         "https://example.com/test.mp4",
         "2022-01-01",
         "/path/to/test.mp4",
-        100
+        100,
       );
 
       const videos = getAllVideos();
@@ -161,7 +162,7 @@ describe("db tests", () => {
         "https://example.com/日本語.mp4",
         "2022-01-01",
         "/path/to/日本語.mp4",
-        100
+        100,
       );
 
       const videos = getAllVideos();
@@ -204,7 +205,7 @@ describe("db tests", () => {
         video1.video_url,
         video1.video_added_date,
         video1.video_path,
-        video1.video_length
+        video1.video_length,
       );
 
       await addVideoToDb(
@@ -214,7 +215,7 @@ describe("db tests", () => {
         video2.video_url,
         video2.video_added_date,
         video2.video_path,
-        video2.video_length
+        video2.video_length,
       );
 
       const videos = getAllVideos();
@@ -235,7 +236,7 @@ describe("db tests", () => {
         "https://example.com/test.mp4",
         "2022-01-01",
         "/path/to/test.mp4",
-        456
+        456,
       );
 
       const exists = isVideoExists(videoId);
@@ -260,7 +261,7 @@ describe("db tests", () => {
         "https://example.com/test.mp4",
         "2022-01-01",
         "/path/to/test.mp4",
-        100
+        100,
       );
 
       expect(isVideoExists("TestId")).toBe(true);
@@ -278,7 +279,7 @@ describe("db tests", () => {
         "https://example.com/sql-like",
         "2022-01-01",
         "/path/to/sql-like.mp4",
-        100
+        100,
       );
 
       expect(isVideoExists(videoId)).toBe(true);
@@ -304,7 +305,7 @@ describe("db tests", () => {
           video_artwork_path: "/new.jpg",
           video_length: 200,
         },
-        "pending"
+        "pending",
       );
 
       expect(videoRepository.findById(videoId)).toMatchObject({
@@ -339,7 +340,7 @@ describe("db tests", () => {
         "https://example.com/dup",
         "2022-03-03",
         "/path/to/dup.mp4",
-        123
+        123,
       );
       await createDb();
       const videos = getAllVideos();
@@ -366,7 +367,7 @@ describe("db tests", () => {
       `);
       legacyDb.run(
         "INSERT INTO videos (video_id, video_name, video_description, video_url, video_added_date, video_path, video_length) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        ["legacyVideo", "Legacy", null, "https://example.com/legacy", "2022-01-01", "/legacy.mp3", 100]
+        ["legacyVideo", "Legacy", null, "https://example.com/legacy", "2022-01-01", "/legacy.mp3", 100],
       );
       legacyDb.close();
 
@@ -568,7 +569,10 @@ describe("db tests", () => {
 
       expect(videoRepository.list()).toEqual([]);
       expect(videoRepository.exists(video.video_id)).toBe(false);
-      expect(videoRepository.findById(video.video_id)).toMatchObject({ ...video, is_deleted: true });
+      expect(videoRepository.findById(video.video_id)).toMatchObject({
+        ...video,
+        is_deleted: true,
+      });
 
       videoRepository.markActive(video.video_id);
       expect(videoRepository.list()).toEqual([video]);

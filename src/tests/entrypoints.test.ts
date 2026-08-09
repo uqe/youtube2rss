@@ -1,7 +1,8 @@
+import { describe, expect, it } from "bun:test";
+
 import { buildRss } from "../build-rss.ts";
 import { createBot, createMessageHandler, startBot } from "../index.ts";
 import { prepare } from "../prepare.ts";
-import { describe, expect, it } from "bun:test";
 
 describe("entrypoint tests", () => {
   it("should expose script entrypoints without running them on import", () => {

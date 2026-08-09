@@ -1,7 +1,8 @@
+import { Database } from "bun:sqlite";
+
 import { getDbFileName, isTestEnv } from "./config.ts";
 import { logger } from "./logger.ts";
 import type { Video } from "./types.ts";
-import { Database } from "bun:sqlite";
 
 type DatabaseOptions = ConstructorParameters<typeof Database>[1];
 
@@ -74,7 +75,7 @@ const migrateToVersionOne = (db: Database) => {
   const columns = db.query("PRAGMA table_info(videos)").all() as Array<{ name: string }>;
   if (!columns.some(({ name }) => name === "publication_status")) {
     db.run(
-      "ALTER TABLE videos ADD COLUMN publication_status TEXT NOT NULL DEFAULT 'published' CHECK (publication_status IN ('pending', 'published'))"
+      "ALTER TABLE videos ADD COLUMN publication_status TEXT NOT NULL DEFAULT 'published' CHECK (publication_status IN ('pending', 'published'))",
     );
   }
 
@@ -208,21 +209,21 @@ export const createVideoRepository = ({
               video_name = ?, video_description = ?, video_url = ?, video_added_date = ?, video_path = ?,
               video_artwork_path = ?, video_chapters_path = ?, video_length = ?, publication_status = ?, is_deleted = 0
             WHERE video_id = ?`,
-            [...values.slice(1), video.video_id]
+            [...values.slice(1), video.video_id],
           );
           return;
         }
 
         db.run(
           "INSERT INTO videos (video_id, video_name, video_description, video_url, video_added_date, video_path, video_artwork_path, video_chapters_path, video_length, publication_status) VALUES (?,?,?,?,?,?,?,?,?,?)",
-          values
+          values,
         );
       }, dbFactory);
     },
     list() {
       return runWithDb((db) => {
         const query = db.query<Video, null>(
-          "SELECT video_id, video_name, video_description, video_url, video_added_date, video_path, video_artwork_path, video_chapters_path, video_length FROM videos WHERE is_deleted = 0 ORDER BY id"
+          "SELECT video_id, video_name, video_description, video_url, video_added_date, video_path, video_artwork_path, video_chapters_path, video_length FROM videos WHERE is_deleted = 0 ORDER BY id",
         );
         return query.all(null);
       }, dbFactory);
@@ -230,7 +231,7 @@ export const createVideoRepository = ({
     findById(videoId: string) {
       return runWithDb((db) => {
         const query = db.query<Omit<StoredVideo, "is_deleted"> & { is_deleted: number }, string>(
-          "SELECT video_id, video_name, video_description, video_url, video_added_date, video_path, video_artwork_path, video_chapters_path, video_length, publication_status, is_deleted FROM videos WHERE video_id = ?"
+          "SELECT video_id, video_name, video_description, video_url, video_added_date, video_path, video_artwork_path, video_chapters_path, video_length, publication_status, is_deleted FROM videos WHERE video_id = ?",
         );
         const video = query.get(videoId);
         return video ? { ...video, is_deleted: Boolean(video.is_deleted) } : null;
@@ -239,7 +240,7 @@ export const createVideoRepository = ({
     exists(videoId: string) {
       return runWithDb((db) => {
         const query = db.query<{ exists_flag: number }, string>(
-          "SELECT EXISTS (SELECT 1 FROM videos WHERE video_id = ? AND is_deleted = 0) as exists_flag"
+          "SELECT EXISTS (SELECT 1 FROM videos WHERE video_id = ? AND is_deleted = 0) as exists_flag",
         );
         const result = query.get(videoId);
         return Boolean(result?.exists_flag);
@@ -248,7 +249,7 @@ export const createVideoRepository = ({
     getPublicationStatus(videoId: string) {
       return runWithDb((db) => {
         const query = db.query<{ publication_status: PublicationStatus }, string>(
-          "SELECT publication_status FROM videos WHERE video_id = ? AND is_deleted = 0"
+          "SELECT publication_status FROM videos WHERE video_id = ? AND is_deleted = 0",
         );
         return query.get(videoId)?.publication_status ?? null;
       }, dbFactory);
@@ -282,7 +283,7 @@ export const addVideoToDb = async (
   videoPath: string,
   videoLength: number,
   videoArtworkPath: string | null = null,
-  videoChaptersPath: string | null = null
+  videoChaptersPath: string | null = null,
 ) => {
   videoRepository.create({
     video_id: videoId,

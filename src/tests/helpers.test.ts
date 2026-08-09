@@ -1,3 +1,5 @@
+import { describe, expect, it } from "bun:test";
+
 import {
   formatSeconds,
   getArtworkPath,
@@ -7,7 +9,6 @@ import {
   getYoutubeVideoUrl,
   isS3Configured,
 } from "../helpers.ts";
-import { describe, expect, it } from "bun:test";
 
 describe("helpers tests", () => {
   describe("getYoutubeVideoId", () => {

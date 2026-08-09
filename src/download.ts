@@ -1,3 +1,6 @@
+import type { Message } from "grammy/types";
+import youtubedl, { type Payload } from "youtube-dl-exec";
+
 import { getYoutubeDlAuthOptions, getYoutubeDownloadTimeoutMs } from "./config.ts";
 import { videoRepository } from "./db.ts";
 import type { PublicationStatus } from "./db.ts";
@@ -10,8 +13,6 @@ import { getStorage, type Storage } from "./storage.ts";
 import { createSerialTaskQueue, mediaTaskQueue } from "./task-queue.ts";
 import type { TaskQueue } from "./task-queue.ts";
 import type { Video } from "./types.ts";
-import type { Message } from "grammy/types";
-import youtubedl, { type Payload } from "youtube-dl-exec";
 
 interface DownloadRepository {
   create(video: Video, publicationStatus?: PublicationStatus): void;
@@ -108,7 +109,7 @@ const stageProgress: Record<Exclude<ProcessingStage, "notify">, Omit<DownloadPro
 
 export const createAudioDownloader = (
   executor: YoutubeDlExecutor = youtubedl,
-  timeoutMs = getYoutubeDownloadTimeoutMs()
+  timeoutMs = getYoutubeDownloadTimeoutMs(),
 ) => {
   return async (videoId: string, outputFilePath: string) => {
     await executor.exec(
@@ -128,7 +129,7 @@ export const createAudioDownloader = (
         embedChapters: true,
         // addHeader: ["referer:youtube.com", "user-agent:googlebot"],
       },
-      { timeout: timeoutMs, killSignal: "SIGKILL" }
+      { timeout: timeoutMs, killSignal: "SIGKILL" },
     );
   };
 };
@@ -140,7 +141,7 @@ export const createVideoFromInfo = (
   outputFilePath: string,
   addedAt: Date,
   artworkFilePath: string | null = null,
-  chaptersFilePath: string | null = null
+  chaptersFilePath: string | null = null,
 ): Video => ({
   video_id: info.id,
   video_name: info.title,
@@ -192,7 +193,7 @@ const defaultDependencies: DownloadDependencies = {
 
 export const createDownloader = (
   dependencies: Partial<DownloadDependencies> = {},
-  enqueue: TaskQueue = createSerialTaskQueue()
+  enqueue: TaskQueue = createSerialTaskQueue(),
 ) => {
   const deps = { ...defaultDependencies, ...dependencies };
 
@@ -261,7 +262,11 @@ export const createDownloader = (
         await refreshFeed(deps.repository, deps.generateFeed);
         deps.repository.markPublished(videoId);
         deps.logger.success(formatLogEvent("feed_publication_recovered", videoId, stage));
-        reportProgress({ stage: "completed", percent: 100, message: "Episode publication recovered" });
+        reportProgress({
+          stage: "completed",
+          percent: 100,
+          message: "Episode publication recovered",
+        });
         return { status: "recovered" };
       }
 
@@ -322,7 +327,7 @@ export const createDownloader = (
       updateStage("persist");
       deps.repository.create(
         createVideoFromInfo(info, outputFilePath, deps.now(), artworkFilePath, chaptersFilePath),
-        "pending"
+        "pending",
       );
       isPersisted = true;
 
@@ -342,7 +347,7 @@ export const createDownloader = (
             await Promise.all(
               [outputFilePath, artworkFilePath, chaptersFilePath]
                 .filter((filePath): filePath is string => Boolean(filePath))
-                .map((filePath) => deps.deleteFile(filePath))
+                .map((filePath) => deps.deleteFile(filePath)),
             );
           }
         } catch (cleanupError) {
@@ -350,14 +355,20 @@ export const createDownloader = (
         }
       }
 
-      reportProgress({ stage: "failed", percent: progressPercent, message: "Episode processing failed" });
+      reportProgress({
+        stage: "failed",
+        percent: progressPercent,
+        message: "Episode processing failed",
+      });
       deps.logger.error(formatLogEvent("video_processing_failed", videoId, stage, error));
       return { status: "failed" };
     }
   };
 
   const notify = async (videoId: string, result: DownloadResult, handler?: ReplyHandler) => {
-    if (!handler) return;
+    if (!handler) {
+      return;
+    }
 
     const messages: Record<DownloadResult["status"], string> = {
       published: "RSS feed was successfully updated.",

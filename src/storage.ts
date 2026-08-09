@@ -15,7 +15,7 @@ export interface Storage {
     videoId: string,
     audioPath: string,
     artworkPath?: string | null,
-    chaptersPath?: string | null
+    chaptersPath?: string | null,
   ): Promise<void>;
 }
 
@@ -34,7 +34,9 @@ export interface ChaptersMetadata {
 }
 
 const deleteLocalFile = async (filePath?: string | null) => {
-  if (!filePath) return;
+  if (!filePath) {
+    return;
+  }
 
   const file = Bun.file(filePath);
   if (await file.exists()) {

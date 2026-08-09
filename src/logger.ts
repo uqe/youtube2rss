@@ -55,7 +55,9 @@ const timestampFormatter = new Intl.DateTimeFormat("sv-SE", {
 });
 
 const parseStructuredEvent = (message: string): StructuredLogEvent | null => {
-  if (!message.startsWith("{")) return null;
+  if (!message.startsWith("{")) {
+    return null;
+  }
 
   try {
     const value = JSON.parse(message) as unknown;
@@ -70,7 +72,9 @@ const parseStructuredEvent = (message: string): StructuredLogEvent | null => {
 
 export const formatLogMessage = (message: string) => {
   const event = parseStructuredEvent(message);
-  if (!event) return message;
+  if (!event) {
+    return message;
+  }
 
   const text = eventMessages[event.event] ?? event.event.replaceAll("_", " ");
   const context = [

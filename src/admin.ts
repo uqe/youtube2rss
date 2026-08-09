@@ -52,7 +52,7 @@ export const createAdminService = ({
   log = logger,
 }: AdminServiceOptions = {}): AdminService => ({
   listVideos() {
-    return [...repository.list()].sort((left, right) => getTimestamp(right) - getTimestamp(left));
+    return repository.list().toSorted((left, right) => getTimestamp(right) - getTimestamp(left));
   },
   deleteVideo(videoId) {
     return enqueue(async () => {
@@ -84,7 +84,7 @@ export const createAdminService = ({
         videoId,
         video.video_path,
         video.video_artwork_path,
-        video.video_chapters_path
+        video.video_chapters_path,
       );
       return { ...video, is_deleted: true };
     });

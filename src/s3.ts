@@ -1,8 +1,9 @@
+import { S3Client } from "bun";
+
 import { getValidatedS3Config } from "./config.ts";
 import type { S3Config } from "./config.ts";
 import { logger } from "./logger.ts";
 import type { Storage } from "./storage.ts";
-import { S3Client } from "bun";
 
 interface S3StorageClient {
   write(path: string, file: Blob, options?: { type?: string }): Promise<unknown>;
@@ -33,6 +34,17 @@ const createS3Client = (s3Config: S3Config | null) => {
     accessKeyId: s3Config.accessKey,
     secretAccessKey: s3Config.secretKey,
   });
+};
+
+const deleteLocalFile = async (filePath?: string | null) => {
+  if (!filePath) {
+    return;
+  }
+
+  const localFile = Bun.file(filePath);
+  if (await localFile.exists()) {
+    await localFile.delete();
+  }
 };
 
 export const createS3Storage = ({
@@ -128,16 +140,8 @@ export const createS3Storage = ({
     videoId: string,
     audioPath: string,
     artworkPath?: string | null,
-    chaptersPath?: string | null
+    chaptersPath?: string | null,
   ): Promise<void> => {
-    const deleteLocalFile = async (filePath?: string | null) => {
-      if (!filePath) return;
-
-      const localFile = Bun.file(filePath);
-      if (await localFile.exists()) {
-        await localFile.delete();
-      }
-    };
     const results = await Promise.allSettled([
       s3client.delete(`files/${videoId}.mp3`),
       s3client.delete(`covers/${videoId}.jpg`),

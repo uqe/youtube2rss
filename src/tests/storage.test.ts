@@ -1,5 +1,6 @@
-import { createLocalStorage, createStorage, getStorage, type Storage } from "../storage.ts";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+
+import { createLocalStorage, createStorage, getStorage, type Storage } from "../storage.ts";
 
 describe("storage tests", () => {
   // Сохраняем оригинальные значения переменных окружения

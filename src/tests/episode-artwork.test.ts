@@ -1,6 +1,7 @@
-import { downloadEpisodeArtwork } from "../episode-artwork.ts";
 import { afterEach, describe, expect, it } from "bun:test";
 import { readdir, rm } from "node:fs/promises";
+
+import { downloadEpisodeArtwork } from "../episode-artwork.ts";
 
 const artworkDirectory = `${import.meta.dir}/data/covers`;
 const outputPath = `${artworkDirectory}/episode-artwork-test.jpg`;
@@ -34,7 +35,7 @@ describe("episode artwork", () => {
         async fetchThumbnail() {
           return new Response(null, { status: 404 });
         },
-      })
+      }),
     ).rejects.toThrow("HTTP 404");
 
     expect(await Bun.file(outputPath).exists()).toBe(false);
@@ -43,7 +44,7 @@ describe("episode artwork", () => {
 
   it("should reject non-HTTP thumbnail URLs", async () => {
     await expect(downloadEpisodeArtwork("file:///tmp/thumbnail.jpg", outputPath)).rejects.toThrow(
-      "Unsupported thumbnail protocol"
+      "Unsupported thumbnail protocol",
     );
   });
 
@@ -72,7 +73,7 @@ describe("episode artwork", () => {
         async processArtwork() {
           throw new Error("processor failed");
         },
-      })
+      }),
     ).rejects.toThrow("processor failed");
 
     expect(await Bun.file(outputPath).exists()).toBe(false);
@@ -86,7 +87,7 @@ describe("episode artwork", () => {
           return new Response("thumbnail-data");
         },
         async processArtwork() {},
-      })
+      }),
     ).rejects.toThrow("missing or empty");
 
     expect(await readdir(artworkDirectory)).toEqual([]);
@@ -101,7 +102,7 @@ describe("episode artwork", () => {
         async processArtwork(_sourcePath, preparedPath) {
           await Bun.write(preparedPath, "");
         },
-      })
+      }),
     ).rejects.toThrow("missing or empty");
 
     expect(await readdir(artworkDirectory)).toEqual([]);
@@ -115,7 +116,7 @@ describe("episode artwork", () => {
         async fetchThumbnail() {
           return new Response(null, { status: 503 });
         },
-      })
+      }),
     ).rejects.toThrow("HTTP 503");
 
     expect(await Bun.file(outputPath).text()).toBe("existing-artwork");

@@ -1,11 +1,13 @@
+import { afterEach, describe, expect, it } from "bun:test";
+
+import type { Payload } from "youtube-dl-exec";
+
 import type { PublicationStatus } from "../db.ts";
 import { createAudioDownloader, createDownloader, createVideoFromInfo } from "../download.ts";
 import type { DownloadDependencies, DownloadProgress } from "../download.ts";
 import { writeEpisodeChapters } from "../episode-chapters.ts";
 import type { Storage } from "../storage.ts";
 import type { Video } from "../types.ts";
-import { afterEach, describe, expect, it } from "bun:test";
-import type { Payload } from "youtube-dl-exec";
 
 const testFiles = new Set<string>();
 
@@ -23,7 +25,7 @@ const createPayload = (overrides: Record<string, unknown> = {}): Payload =>
 const createRepository = (initialVideos: Video[] = []) => {
   const videos = [...initialVideos];
   const publicationStatuses = new Map<string, PublicationStatus>(
-    initialVideos.map((video) => [video.video_id, "published"])
+    initialVideos.map((video) => [video.video_id, "published"]),
   );
 
   return {
@@ -225,7 +227,7 @@ describe("download tests", () => {
           calls.push({ executionOptions });
         },
       },
-      250000
+      250000,
     );
 
     await downloadAudio("dQw4w9WgXcQ", "/tmp/audio.mp3");
@@ -267,7 +269,7 @@ describe("download tests", () => {
           getStorageCalls += 1;
           return createStorage().storage;
         },
-      })
+      }),
     );
 
     await download("alreadyExists", (text) => {
@@ -304,7 +306,7 @@ describe("download tests", () => {
         async generateFeed(videosToGenerate): Promise<void> {
           feedVideos = [...videosToGenerate];
         },
-      })
+      }),
     );
 
     await download(
@@ -312,7 +314,7 @@ describe("download tests", () => {
       (text) => {
         replies.push(text);
       },
-      (update) => progress.push(update)
+      (update) => progress.push(update),
     );
 
     expect(videos).toHaveLength(1);
@@ -365,7 +367,7 @@ describe("download tests", () => {
             errors.push(message);
           },
         },
-      })
+      }),
     );
 
     await download("missingFile", (text) => {
@@ -388,7 +390,7 @@ describe("download tests", () => {
           await Bun.write(outputFilePath, "audio");
         },
         getStorage: () => storageState.storage,
-      })
+      }),
     )("noChaptersVideo");
 
     expect(result).toEqual({ status: "published" });
@@ -415,7 +417,7 @@ describe("download tests", () => {
           await Bun.write(outputFilePath, "audio");
         },
         getStorage: () => storage,
-      })
+      }),
     )("rollbackAssets");
 
     expect(result).toEqual({ status: "failed" });
@@ -451,7 +453,7 @@ describe("download tests", () => {
           return createPayload({ chapters: [{ start_time: 0, title: "Intro" }] });
         },
         getStorage: () => storage,
-      })
+      }),
     )("rollbackChapters");
 
     expect(result).toEqual({ status: "failed" });
@@ -487,7 +489,7 @@ describe("download tests", () => {
             throw new Error("RSS upload failed");
           }
         },
-      })
+      }),
     );
 
     const firstResult = await download("recoverVideo", (text) => {
@@ -512,7 +514,7 @@ describe("download tests", () => {
     const pendingVideo = createVideoFromInfo(
       createPayload({ id: "missingPendingAudio" }),
       "/missing/audio.mp3",
-      new Date()
+      new Date(),
     );
     const { repository, publicationStatuses } = createRepository([pendingVideo]);
     publicationStatuses.set("missingPendingAudio", "pending");
@@ -530,7 +532,7 @@ describe("download tests", () => {
         async generateFeed(): Promise<void> {
           generateFeedCalls += 1;
         },
-      })
+      }),
     )("missingPendingAudio");
 
     expect(result).toEqual({ status: "failed" });
@@ -566,7 +568,7 @@ describe("download tests", () => {
         async generateFeed(videos): Promise<void> {
           events.push(`feed:${videos.map((video) => video.video_id).join(",")}`);
         },
-      })
+      }),
     );
 
     const first = download("firstVideo");

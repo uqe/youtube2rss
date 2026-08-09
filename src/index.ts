@@ -1,3 +1,6 @@
+import { Bot, GrammyError, HttpError } from "grammy";
+import type { Message } from "grammy/types";
+
 import { getRequiredBotToken, getTelegramWhitelist, loadBotAppConfig } from "./config.ts";
 import type { BotAppConfig } from "./config.ts";
 import { createDb } from "./db.ts";
@@ -5,8 +8,6 @@ import { download } from "./download.ts";
 import { getYoutubeVideoId } from "./helpers.ts";
 import { logger } from "./logger.ts";
 import { registerShutdownHandlers } from "./shutdown.ts";
-import { Bot, GrammyError, HttpError } from "grammy";
-import type { Message } from "grammy/types";
 
 interface BotLogger {
   info(message: string): void;

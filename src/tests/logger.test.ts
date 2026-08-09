@@ -1,5 +1,6 @@
-import { createLogger, formatLogMessage } from "../logger.ts";
 import { describe, expect, it } from "bun:test";
+
+import { createLogger, formatLogMessage } from "../logger.ts";
 
 describe("logger", () => {
   it("should render known structured events as readable messages", () => {
@@ -9,8 +10,8 @@ describe("logger", () => {
           event: "video_download_started",
           videoId: "2D2jOZy8mSA",
           stage: "download",
-        })
-      )
+        }),
+      ),
     ).toBe("Download started  video=2D2jOZy8mSA");
   });
 
@@ -22,8 +23,8 @@ describe("logger", () => {
           videoId: "2D2jOZy8mSA",
           stage: "artwork",
           error: "Error: thumbnail unavailable",
-        })
-      )
+        }),
+      ),
     ).toBe("Video processing failed  video=2D2jOZy8mSA  stage=artwork  error=Error: thumbnail unavailable");
   });
 
@@ -47,7 +48,7 @@ describe("logger", () => {
         event: "video_download_completed",
         videoId: "2D2jOZy8mSA",
         stage: "download",
-      })
+      }),
     );
 
     expect(lines).toEqual(["2026-08-05 10:06:07  DONE   Download completed  video=2D2jOZy8mSA"]);

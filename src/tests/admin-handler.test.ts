@@ -1,7 +1,8 @@
+import { describe, expect, it } from "bun:test";
+
 import { createAdminHandler } from "../admin-handler.ts";
 import type { AdminService } from "../admin.ts";
 import type { StoredVideo } from "../db.ts";
-import { describe, expect, it } from "bun:test";
 
 const password = "secret";
 const authorization = `Basic ${Buffer.from(`admin:${password}`).toString("base64")}`;
@@ -61,26 +62,32 @@ describe("admin HTTP handler", () => {
   });
 
   it("should validate new YouTube URLs", async () => {
-    const handler = createAdminHandler({ password, service: { ...createService(), listVideos: () => [] } });
+    const handler = createAdminHandler({
+      password,
+      service: { ...createService(), listVideos: () => [] },
+    });
     const response = await handler(
       new Request("http://localhost/api/admin/videos", {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ url: "https://example.com/video" }),
-      })
+      }),
     );
 
     expect(response.status).toBe(400);
   });
 
   it("should reject malformed JSON request bodies", async () => {
-    const handler = createAdminHandler({ password, service: { ...createService(), listVideos: () => [] } });
+    const handler = createAdminHandler({
+      password,
+      service: { ...createService(), listVideos: () => [] },
+    });
     const response = await handler(
       new Request("http://localhost/api/admin/videos", {
         method: "POST",
         headers: authHeaders,
         body: "{broken",
-      })
+      }),
     );
 
     expect(response.status).toBe(400);
@@ -88,7 +95,10 @@ describe("admin HTTP handler", () => {
   });
 
   it("should reject missing, non-string, and blank URL fields", async () => {
-    const handler = createAdminHandler({ password, service: { ...createService(), listVideos: () => [] } });
+    const handler = createAdminHandler({
+      password,
+      service: { ...createService(), listVideos: () => [] },
+    });
 
     for (const body of [{}, { url: 123 }, { url: "   " }, null]) {
       const response = await handler(
@@ -96,7 +106,7 @@ describe("admin HTTP handler", () => {
           method: "POST",
           headers: authHeaders,
           body: JSON.stringify(body),
-        })
+        }),
       );
 
       expect(response.status).toBe(400);
@@ -119,7 +129,7 @@ describe("admin HTTP handler", () => {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ url: `https://youtu.be/${"a".repeat(2049)}` }),
-      })
+      }),
     );
 
     expect(response.status).toBe(400);
@@ -141,7 +151,7 @@ describe("admin HTTP handler", () => {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ url: video.video_url }),
-      })
+      }),
     );
 
     expect(response.status).toBe(409);
@@ -155,7 +165,11 @@ describe("admin HTTP handler", () => {
       password,
       service: { ...createService(), listVideos: () => [] },
       downloadVideo(_videoId, progressHandler) {
-        progressHandler?.({ stage: "download", percent: 12, message: "Downloading and converting audio" });
+        progressHandler?.({
+          stage: "download",
+          percent: 12,
+          message: "Downloading and converting audio",
+        });
         return new Promise((resolve) => {
           finishDownload = () => resolve({ status: "published" });
         });
@@ -166,12 +180,16 @@ describe("admin HTTP handler", () => {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ url: video.video_url }),
-      })
+      }),
     );
     const created = await createResponse.json();
-    expect(created.job.progress).toEqual({ stage: "queued", percent: 0, message: "Waiting to start" });
+    expect(created.job.progress).toEqual({
+      stage: "queued",
+      percent: 0,
+      message: "Waiting to start",
+    });
     const processingResponse = await handler(
-      new Request(`http://localhost/api/admin/jobs/${created.job.id}`, { headers: authHeaders })
+      new Request(`http://localhost/api/admin/jobs/${created.job.id}`, { headers: authHeaders }),
     );
     const processing = await processingResponse.json();
 
@@ -187,7 +205,7 @@ describe("admin HTTP handler", () => {
     finishDownload?.();
     await Promise.resolve();
     const jobResponse = await handler(
-      new Request(`http://localhost/api/admin/jobs/${created.job.id}`, { headers: authHeaders })
+      new Request(`http://localhost/api/admin/jobs/${created.job.id}`, { headers: authHeaders }),
     );
     const completed = await jobResponse.json();
 
@@ -220,7 +238,7 @@ describe("admin HTTP handler", () => {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ url: video.video_url }),
-      })
+      }),
     );
 
     expect(response.status).toBe(202);
@@ -278,12 +296,12 @@ describe("admin HTTP handler", () => {
           method: "POST",
           headers: authHeaders,
           body: JSON.stringify({ url: video.video_url }),
-        })
+        }),
       );
       const created = await createResponse.json();
       await Promise.resolve();
       const jobResponse = await handler(
-        new Request(`http://localhost/api/admin/jobs/${created.job.id}`, { headers: authHeaders })
+        new Request(`http://localhost/api/admin/jobs/${created.job.id}`, { headers: authHeaders }),
       );
       const completed = await jobResponse.json();
 
@@ -312,13 +330,13 @@ describe("admin HTTP handler", () => {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ url: video.video_url }),
-      })
+      }),
     );
     const created = await createResponse.json();
     await Promise.resolve();
     await Promise.resolve();
     const jobResponse = await handler(
-      new Request(`http://localhost/api/admin/jobs/${created.job.id}`, { headers: authHeaders })
+      new Request(`http://localhost/api/admin/jobs/${created.job.id}`, { headers: authHeaders }),
     );
     const completed = await jobResponse.json();
 
@@ -353,7 +371,7 @@ describe("admin HTTP handler", () => {
       new Request(`http://localhost/api/admin/videos/${video.video_id}`, {
         method: "DELETE",
         headers: authHeaders,
-      })
+      }),
     );
 
     expect(response.status).toBe(200);
@@ -376,7 +394,7 @@ describe("admin HTTP handler", () => {
       new Request("http://localhost/api/admin/videos/video%20id", {
         method: "DELETE",
         headers: authHeaders,
-      })
+      }),
     );
 
     expect(response.status).toBe(200);
@@ -399,7 +417,7 @@ describe("admin HTTP handler", () => {
       new Request(`http://localhost/api/admin/videos/${video.video_id}`, {
         method: "DELETE",
         headers: authHeaders,
-      })
+      }),
     );
 
     expect(response.status).toBe(404);
@@ -420,7 +438,7 @@ describe("admin HTTP handler", () => {
       new Request(`http://localhost/api/admin/videos/${video.video_id}`, {
         method: "DELETE",
         headers: authHeaders,
-      })
+      }),
     );
     const body = await response.json();
 
@@ -444,7 +462,7 @@ describe("admin HTTP handler", () => {
   it("should serve admin HEAD requests without a response body", async () => {
     const handler = createAdminHandler({ password, service: createService() });
     const response = await handler(
-      new Request("http://localhost/admin.html", { method: "HEAD", headers: authHeaders })
+      new Request("http://localhost/admin.html", { method: "HEAD", headers: authHeaders }),
     );
 
     expect(response.status).toBe(200);

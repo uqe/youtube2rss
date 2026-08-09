@@ -1,3 +1,5 @@
+import youtubedl, { type Payload } from "youtube-dl-exec";
+
 import {
   getChaptersDir,
   getCoversDir,
@@ -5,13 +7,14 @@ import {
   getYoutubeDlAuthOptions,
   isS3Configured as isS3ConfiguredConfig,
 } from "./config.ts";
-import youtubedl, { type Payload } from "youtube-dl-exec";
 
 const videoIdPattern = /^[a-zA-Z0-9_-]{11,}$/;
 const safeFileVideoIdPattern = /^[a-zA-Z0-9_-]+$/;
 const urlPattern = /https?:\/\/[^\s<>"']+/gi;
 
 const trimTrailingPunctuation = (value: string) => value.replace(/[),.!?;:]+$/g, "");
+
+const padTimePart = (value: number) => String(value).padStart(2, "0");
 
 const isYoutubeHost = (hostname: string) => hostname === "youtube.com" || hostname.endsWith(".youtube.com");
 
@@ -29,7 +32,7 @@ const getVideoIdFromUrl = (url: URL) => {
   const hostname = url.hostname.toLowerCase();
 
   if (hostname === "youtu.be") {
-    const videoId = url.pathname.split("/").filter(Boolean)[0];
+    const videoId = url.pathname.split("/").find(Boolean);
     return videoId && videoIdPattern.test(videoId) ? videoId : null;
   }
 
@@ -94,8 +97,7 @@ export const formatSeconds = (seconds: number) => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
-  const pad = (num: number) => String(num).padStart(2, "0");
-  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+  return `${padTimePart(hrs)}:${padTimePart(mins)}:${padTimePart(secs)}`;
 };
 
 export const getVideoInfo = async (videoId: string): Promise<Payload> => {

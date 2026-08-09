@@ -1,3 +1,7 @@
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+
+import { parse } from "@libs/xml";
+
 import {
   createFeedItem,
   createFeedOptions,
@@ -11,8 +15,6 @@ import {
 import { formatSeconds } from "../helpers.ts";
 import type { Storage } from "../storage.ts";
 import type { Video } from "../types.ts";
-import { parse } from "@libs/xml";
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
 interface RSSDoc {
   rss: {
@@ -231,7 +233,7 @@ describe("generate-feed tests", () => {
 
         if (video.video_chapters_path) {
           expect(xmlContent).toContain(
-            `<podcast:chapters url="${getChaptersUrl(video.video_id)}" type="application/json+chapters">`
+            `<podcast:chapters url="${getChaptersUrl(video.video_id)}" type="application/json+chapters">`,
           );
         }
       });
