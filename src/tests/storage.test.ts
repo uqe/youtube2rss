@@ -55,7 +55,9 @@ describe("storage tests", () => {
       const storage = getStorage();
 
       expect(storage).toBeDefined();
+      expect(storage.kind).toBe("local");
       await expect(storage.uploadAudio("videoId", "/missing/audio.mp3")).resolves.toBeUndefined();
+      await expect(storage.uploadArtwork("videoId", "/missing/artwork.jpg")).resolves.toBeUndefined();
       await expect(storage.uploadChapters("videoId", "/missing/chapters.json")).resolves.toBeUndefined();
       await expect(storage.uploadRss("/missing/rss.xml")).resolves.toBeUndefined();
       await expect(storage.ensureCoverImage()).resolves.toBeUndefined();
@@ -138,6 +140,34 @@ describe("storage tests", () => {
       });
     });
 
+    it("should report existing and missing local artwork", async () => {
+      const filePath = `${import.meta.dir}/data/storage-artwork.jpg`;
+      const missingPath = `${import.meta.dir}/data/missing-storage-artwork.jpg`;
+      await Bun.write(filePath, "artwork");
+
+      try {
+        const storage = createLocalStorage();
+        await expect(storage.getArtworkMetadata("videoId", filePath)).resolves.toEqual({ exists: true });
+        await expect(storage.getArtworkMetadata("videoId", missingPath)).resolves.toEqual({ exists: false });
+      } finally {
+        await Bun.file(filePath).delete();
+      }
+    });
+
+    it("should report existing and missing local chapter documents", async () => {
+      const filePath = `${import.meta.dir}/data/storage-chapters.json`;
+      const missingPath = `${import.meta.dir}/data/missing-storage-chapters.json`;
+      await Bun.write(filePath, "{}");
+
+      try {
+        const storage = createLocalStorage();
+        await expect(storage.getChaptersMetadata("videoId", filePath)).resolves.toEqual({ exists: true });
+        await expect(storage.getChaptersMetadata("videoId", missingPath)).resolves.toEqual({ exists: false });
+      } finally {
+        await Bun.file(filePath).delete();
+      }
+    });
+
     it("should delete local episode assets idempotently", async () => {
       const audioPath = `${import.meta.dir}/data/storage-delete.mp3`;
       const artworkPath = `${import.meta.dir}/data/storage-delete.jpg`;
@@ -154,6 +184,15 @@ describe("storage tests", () => {
       expect(await Bun.file(artworkPath).exists()).toBe(false);
       expect(await Bun.file(chaptersPath).exists()).toBe(false);
     });
+
+    it("should delete only the supplied local paths", async () => {
+      const audioPath = `${import.meta.dir}/data/storage-audio-only.mp3`;
+      await Bun.write(audioPath, "audio");
+
+      await createLocalStorage().deleteEpisodeAssets("videoId", audioPath, null, undefined);
+
+      expect(await Bun.file(audioPath).exists()).toBe(false);
+    });
   });
 
   describe("Storage factory pattern", () => {
@@ -161,11 +200,13 @@ describe("storage tests", () => {
       const localStorage = createLocalStorage();
 
       const audioResult = await localStorage.uploadAudio("videoId", "/path/to/audio.mp3");
+      const artworkResult = await localStorage.uploadArtwork("videoId", "/path/to/artwork.jpg");
       const chaptersResult = await localStorage.uploadChapters("videoId", "/path/to/chapters.json");
       const rssResult = await localStorage.uploadRss("/path/to/rss.xml");
       const coverResult = await localStorage.ensureCoverImage();
 
       expect(audioResult).toBeUndefined();
+      expect(artworkResult).toBeUndefined();
       expect(chaptersResult).toBeUndefined();
       expect(rssResult).toBeUndefined();
       expect(coverResult).toBeUndefined();
@@ -184,13 +225,22 @@ describe("storage tests", () => {
     });
 
     it("createStorage should return local storage when remote storage is not configured", async () => {
+      let predicateCalls = 0;
+      let remoteFactoryCalls = 0;
       const storage = createStorage({
-        isRemoteConfigured: () => false,
+        isRemoteConfigured: () => {
+          predicateCalls += 1;
+          return false;
+        },
         createRemoteStorage: () => {
+          remoteFactoryCalls += 1;
           throw new Error("Remote storage should not be created");
         },
       });
 
+      expect(storage.kind).toBe("local");
+      expect(predicateCalls).toBe(1);
+      expect(remoteFactoryCalls).toBe(0);
       await expect(storage.uploadAudio("videoId", "/missing/audio.mp3")).resolves.toBeUndefined();
     });
 
@@ -202,6 +252,39 @@ describe("storage tests", () => {
       });
 
       expect(storage).toBe(remoteStorage);
+    });
+
+    it("should invoke the remote factory exactly once", () => {
+      let predicateCalls = 0;
+      let factoryCalls = 0;
+      const remoteStorage: Storage = { ...createLocalStorage(), kind: "remote" };
+
+      const storage = createStorage({
+        isRemoteConfigured: () => {
+          predicateCalls += 1;
+          return true;
+        },
+        createRemoteStorage: () => {
+          factoryCalls += 1;
+          return remoteStorage;
+        },
+      });
+
+      expect(storage).toBe(remoteStorage);
+      expect(storage.kind).toBe("remote");
+      expect(predicateCalls).toBe(1);
+      expect(factoryCalls).toBe(1);
+    });
+
+    it("should propagate remote storage construction failures", () => {
+      expect(() =>
+        createStorage({
+          isRemoteConfigured: () => true,
+          createRemoteStorage: () => {
+            throw new Error("remote factory failed");
+          },
+        }),
+      ).toThrow("remote factory failed");
     });
   });
 });

@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 
@@ -13,6 +13,7 @@ import {
   parseRangeHeader,
   resolveSafePath,
   serverHandler,
+  startServer,
 } from "../serve.ts";
 
 const testPublicDir = "./src/tests/data/static-public";
@@ -188,6 +189,34 @@ describe("serve tests", () => {
     it("should reject multiple ranges", () => {
       expect(parseRangeHeader("bytes=0-10,20-30", fileSize)).toBeNull();
     });
+
+    it("should reject ranges for empty and invalid file sizes", () => {
+      expect(parseRangeHeader("bytes=0-0", 0)).toBeNull();
+      expect(parseRangeHeader("bytes=0-0", -1)).toBeNull();
+    });
+
+    it("should trim surrounding whitespace", () => {
+      expect(parseRangeHeader("  bytes=10-19  ", fileSize)).toEqual([10, 19]);
+    });
+
+    it("should reject a range without either boundary", () => {
+      expect(parseRangeHeader("bytes=-", fileSize)).toBeNull();
+    });
+
+    it("should reject an empty suffix range", () => {
+      expect(parseRangeHeader("bytes=-0", fileSize)).toBeNull();
+    });
+
+    it("should clamp suffix ranges larger than the file", () => {
+      expect(parseRangeHeader("bytes=-2000", fileSize)).toEqual([0, 999]);
+    });
+
+    it("should reject unsupported units and signed boundaries", () => {
+      expect(parseRangeHeader("items=0-10", fileSize)).toBeNull();
+      expect(parseRangeHeader("Bytes=0-10", fileSize)).toBeNull();
+      expect(parseRangeHeader("bytes=+1-10", fileSize)).toBeNull();
+      expect(parseRangeHeader("bytes=-1-10", fileSize)).toBeNull();
+    });
   });
 
   describe("resolveSafePath", () => {
@@ -203,6 +232,15 @@ describe("serve tests", () => {
       const result = resolveSafePath("/../../../etc/passwd", testPublicPath);
 
       expect(result.filePath.startsWith(testPublicPath)).toBe(true);
+      expect(result.isInsideBasePath).toBe(true);
+    });
+
+    it("should resolve nested public files without changing the pathname", () => {
+      const result = resolveSafePath("/assets/admin/app.js", testPublicPath);
+
+      expect(result.pathname).toBe("/assets/admin/app.js");
+      expect(result.safePath).toBe("/assets/admin/app.js");
+      expect(result.filePath).toBe(resolve(testPublicPath, "assets/admin/app.js"));
       expect(result.isInsideBasePath).toBe(true);
     });
   });
@@ -221,6 +259,85 @@ describe("serve tests", () => {
       expect(response.status).toBe(200);
       expect(response.headers.get("Content-Type")).toBe("text/html");
       expect(await response.text()).toBe("<html>custom</html>");
+    });
+
+    it("should log missing files outside error-only mode", async () => {
+      const warnings: string[] = [];
+      const handler = createStaticFileHandler({
+        basePath: testPublicPath,
+        logLevel: "info",
+        log: { ...silentLogger, warn: (message) => warnings.push(message) },
+      });
+
+      const response = await handler(new Request("http://localhost/missing.txt"));
+
+      expect(response.status).toBe(404);
+      expect(warnings).toEqual(["[404] Not found: /missing.txt"]);
+    });
+
+    it("should suppress missing-file logs in error-only mode", async () => {
+      const warnings: string[] = [];
+      const handler = createStaticFileHandler({
+        basePath: testPublicPath,
+        logLevel: "error",
+        log: { ...silentLogger, warn: (message) => warnings.push(message) },
+      });
+
+      expect((await handler(new Request("http://localhost/missing.txt"))).status).toBe(404);
+      expect(warnings).toEqual([]);
+    });
+
+    it("should emit detailed range logs in debug mode", async () => {
+      await Bun.write(`${testPublicDir}/debug.mp3`, "0123456789");
+      const messages: string[] = [];
+      const handler = createStaticFileHandler({
+        basePath: testPublicPath,
+        logLevel: "debug",
+        log: { ...silentLogger, debug: (message) => messages.push(message) },
+      });
+
+      const response = await handler(new Request("http://localhost/debug.mp3", { headers: { Range: "bytes=3-6" } }));
+
+      expect(response.status).toBe(206);
+      expect(await response.text()).toBe("3456");
+      expect(messages).toEqual(["[206] Serving /debug.mp3 (audio/mpeg) Range: 3-6/10"]);
+    });
+
+    it("should log successful full-file responses", async () => {
+      await Bun.write(`${testPublicDir}/logged.css`, "body {}");
+      const messages: string[] = [];
+      const handler = createStaticFileHandler({
+        basePath: testPublicPath,
+        logLevel: "info",
+        log: { ...silentLogger, info: (message) => messages.push(message) },
+      });
+
+      const response = await handler(new Request("http://localhost/logged.css"));
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Cache-Control")).toBe("public, max-age=300");
+      expect(messages).toEqual(["[200] Serving /logged.css (text/css)"]);
+    });
+
+    it("should return an empty 304 response before logging a file serve", async () => {
+      await Bun.write(`${testPublicDir}/cached.html`, "cached");
+      const messages: string[] = [];
+      const handler = createStaticFileHandler({
+        basePath: testPublicPath,
+        logLevel: "info",
+        log: { ...silentLogger, info: (message) => messages.push(message) },
+      });
+      const initialResponse = await handler(new Request("http://localhost/cached.html"));
+      const etag = initialResponse.headers.get("ETag");
+      messages.length = 0;
+
+      const cachedResponse = await handler(
+        new Request("http://localhost/cached.html", { headers: { "If-None-Match": etag ?? "" } }),
+      );
+
+      expect(cachedResponse.status).toBe(304);
+      expect(await cachedResponse.text()).toBe("");
+      expect(messages).toEqual([]);
     });
   });
 
@@ -243,6 +360,106 @@ describe("serve tests", () => {
         server.stop(true);
       }
     });
+
+    it("should delegate requests to a custom handler", async () => {
+      const paths: string[] = [];
+      const server = createServer({
+        port: 0,
+        log: silentLogger,
+        handler: async (request) => {
+          paths.push(new URL(request.url).pathname);
+          return new Response("custom response", { status: 202 });
+        },
+      });
+
+      try {
+        const response = await fetch(new URL("/custom-handler", server.url));
+        expect(response.status).toBe(202);
+        expect(await response.text()).toBe("custom response");
+        expect(paths).toEqual(["/custom-handler"]);
+      } finally {
+        server.stop(true);
+      }
+    });
+
+    it("should convert unhandled request errors into a generic 500 response", async () => {
+      const errors: string[] = [];
+      const consoleError = spyOn(console, "error").mockImplementation(() => {});
+      const server = createServer({
+        port: 0,
+        log: { ...silentLogger, error: (message) => errors.push(message) },
+        handler: async () => {
+          throw new Error("handler failed");
+        },
+      });
+
+      try {
+        const response = await fetch(server.url);
+        expect(response.status).toBe(500);
+        expect(await response.text()).toBe("Server error occurred");
+        expect(errors).toEqual(["Server error"]);
+        expect(consoleError).toHaveBeenCalledTimes(1);
+      } finally {
+        server.stop(true);
+        consoleError.mockRestore();
+      }
+    });
+  });
+
+  describe("startServer", () => {
+    it("should initialize dependencies, start serving, and log runtime details", async () => {
+      const previousSigintListeners = new Set(process.listeners("SIGINT"));
+      const previousSigtermListeners = new Set(process.listeners("SIGTERM"));
+      const messages: string[] = [];
+      let initializationCalls = 0;
+      const server = await startServer({
+        port: 0,
+        basePath: testPublicPath,
+        logLevel: "error",
+        log: { ...silentLogger, info: (message) => messages.push(message) },
+        async initializeDatabase() {
+          initializationCalls += 1;
+        },
+        handler: async () => new Response("started"),
+      });
+
+      try {
+        const response = await fetch(server.url);
+        expect(await response.text()).toBe("started");
+        expect(initializationCalls).toBe(1);
+        expect(messages).toEqual([
+          "Static file server running at http://localhost:0",
+          `Serving files from: ${testPublicPath}`,
+        ]);
+      } finally {
+        server.stop(true);
+        for (const listener of process.listeners("SIGINT")) {
+          if (!previousSigintListeners.has(listener)) {
+            process.off("SIGINT", listener);
+          }
+        }
+        for (const listener of process.listeners("SIGTERM")) {
+          if (!previousSigtermListeners.has(listener)) {
+            process.off("SIGTERM", listener);
+          }
+        }
+      }
+    });
+
+    it("should not start a server when database initialization fails", async () => {
+      const messages: string[] = [];
+
+      await expect(
+        startServer({
+          port: 0,
+          log: { ...silentLogger, info: (message) => messages.push(message) },
+          async initializeDatabase() {
+            throw new Error("database failed");
+          },
+        }),
+      ).rejects.toThrow("database failed");
+      expect(messages).toEqual([]);
+    });
   });
 
   describe("createApplicationHandler", () => {
@@ -264,6 +481,18 @@ describe("serve tests", () => {
       expect(await (await handler(new Request("http://localhost/api/admin/videos"))).text()).toBe("admin");
       expect(await (await handler(new Request("http://localhost/rss.xml"))).text()).toBe("static");
       expect(requests).toEqual(["admin:/admin", "admin:/admin.html", "admin:/api/admin/videos", "static:/rss.xml"]);
+    });
+
+    it("should require exact admin route boundaries", async () => {
+      const handler = createApplicationHandler({
+        staticHandler: async () => new Response("static"),
+        adminHandler: async () => new Response("admin"),
+      });
+
+      expect(await (await handler(new Request("http://localhost/admin/settings"))).text()).toBe("static");
+      expect(await (await handler(new Request("http://localhost/api/admin"))).text()).toBe("static");
+      expect(await (await handler(new Request("http://localhost/api/admin/jobs/123"))).text()).toBe("admin");
+      expect(await (await handler(new Request("http://localhost/admin?source=test"))).text()).toBe("admin");
     });
   });
 

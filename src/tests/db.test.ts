@@ -386,6 +386,78 @@ describe("db tests", () => {
       expect(repository.findById("legacyVideo")?.video_artwork_path).toBeNull();
       expect(repository.findById("legacyVideo")?.video_chapters_path).toBeNull();
     });
+
+    it("should reject a legacy database with duplicate video IDs", async () => {
+      const duplicateDbFile = "./src/tests/data/youtube2rss.duplicate.test.db";
+      await Bun.file(duplicateDbFile)
+        .delete()
+        .catch(() => {});
+      const legacyDb = new Database(duplicateDbFile, { create: true });
+      legacyDb.run("CREATE TABLE videos (id INTEGER PRIMARY KEY AUTOINCREMENT, video_id TEXT NOT NULL)");
+      legacyDb.run("INSERT INTO videos (video_id) VALUES (?), (?)", ["duplicate", "duplicate"]);
+      legacyDb.close();
+
+      try {
+        await expect(
+          createDb({
+            dbFactory: createDatabaseFactory(() => duplicateDbFile),
+            isTestEnvironment: () => true,
+            log: silentLogger,
+          }),
+        ).rejects.toThrow("Cannot add unique video_id index: duplicate value duplicate");
+      } finally {
+        await Bun.file(duplicateDbFile).delete();
+      }
+    });
+
+    it("should reject a database created by a newer application version", async () => {
+      const futureDbFile = "./src/tests/data/youtube2rss.future.test.db";
+      await Bun.file(futureDbFile)
+        .delete()
+        .catch(() => {});
+      const futureDb = new Database(futureDbFile, { create: true });
+      futureDb.run(`PRAGMA user_version = ${latestDatabaseVersion + 1}`);
+      futureDb.close();
+
+      try {
+        await expect(
+          createDb({
+            dbFactory: createDatabaseFactory(() => futureDbFile),
+            isTestEnvironment: () => true,
+            log: silentLogger,
+          }),
+        ).rejects.toThrow(`Database version ${latestDatabaseVersion + 1} is newer than supported version`);
+      } finally {
+        await Bun.file(futureDbFile).delete();
+      }
+    });
+
+    it("should distinguish database creation from an up-to-date database", async () => {
+      const loggedDbFile = "./src/tests/data/youtube2rss.logged.test.db";
+      const infoMessages: string[] = [];
+      const successMessages: string[] = [];
+      const options = {
+        dbFactory: createDatabaseFactory(() => loggedDbFile),
+        isTestEnvironment: () => false,
+        log: {
+          info: (message: string) => infoMessages.push(message),
+          success: (message: string) => successMessages.push(message),
+        },
+      };
+      await Bun.file(loggedDbFile)
+        .delete()
+        .catch(() => {});
+
+      try {
+        await createDb(options);
+        await createDb(options);
+
+        expect(successMessages).toEqual(["Database created!"]);
+        expect(infoMessages).toEqual(["Database is up to date"]);
+      } finally {
+        await Bun.file(loggedDbFile).delete();
+      }
+    });
   });
 
   describe("dbName", () => {
