@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { createLocalStorage, createStorage, getStorage, type Storage } from "../storage.ts";
+import { restoreEnvironment } from "./environment.ts";
 
 describe("storage tests", () => {
   // Сохраняем оригинальные значения переменных окружения
@@ -13,17 +14,14 @@ describe("storage tests", () => {
     originalEnv.S3_SECRET_KEY = Bun.env.S3_SECRET_KEY;
 
     // Очищаем S3 переменные для тестирования локального хранилища
-    Bun.env.S3_ENDPOINT = undefined;
-    Bun.env.S3_BUCKET = undefined;
-    Bun.env.S3_ACCESS_KEY = undefined;
-    Bun.env.S3_SECRET_KEY = undefined;
+    delete Bun.env.S3_ENDPOINT;
+    delete Bun.env.S3_BUCKET;
+    delete Bun.env.S3_ACCESS_KEY;
+    delete Bun.env.S3_SECRET_KEY;
   });
 
   afterEach(() => {
-    Bun.env.S3_ENDPOINT = originalEnv.S3_ENDPOINT;
-    Bun.env.S3_BUCKET = originalEnv.S3_BUCKET;
-    Bun.env.S3_ACCESS_KEY = originalEnv.S3_ACCESS_KEY;
-    Bun.env.S3_SECRET_KEY = originalEnv.S3_SECRET_KEY;
+    restoreEnvironment(originalEnv);
   });
 
   describe("Local storage (when S3 is not configured)", () => {

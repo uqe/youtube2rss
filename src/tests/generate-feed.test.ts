@@ -15,6 +15,7 @@ import {
 import { formatSeconds } from "../helpers.ts";
 import type { Storage } from "../storage.ts";
 import type { Video } from "../types.ts";
+import { restoreEnvironment } from "./environment.ts";
 
 interface RSSDoc {
   rss: {
@@ -98,7 +99,7 @@ describe("generate-feed tests", () => {
     if (await generatedRss.exists()) {
       await generatedRss.delete();
     }
-    Bun.env.IS_TEST = originalIsTest;
+    restoreEnvironment({ IS_TEST: originalIsTest });
   });
 
   describe("generateFeed", () => {

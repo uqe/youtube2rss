@@ -8,6 +8,7 @@ import type { DownloadDependencies, DownloadProgress } from "../download.ts";
 import { writeEpisodeChapters } from "../episode-chapters.ts";
 import type { Storage } from "../storage.ts";
 import type { Video } from "../types.ts";
+import { restoreEnvironment } from "./environment.ts";
 
 const testFiles = new Set<string>();
 
@@ -158,15 +159,17 @@ describe("download tests", () => {
   const originalYoutubeExtractorArgs = Bun.env.YOUTUBE_EXTRACTOR_ARGS;
 
   afterEach(() => {
-    Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = originalYoutubeCookiesFromBrowser;
-    Bun.env.YOUTUBE_COOKIES_PATH = originalYoutubeCookiesPath;
-    Bun.env.YOUTUBE_EXTRACTOR_ARGS = originalYoutubeExtractorArgs;
+    restoreEnvironment({
+      YOUTUBE_COOKIES_FROM_BROWSER: originalYoutubeCookiesFromBrowser,
+      YOUTUBE_COOKIES_PATH: originalYoutubeCookiesPath,
+      YOUTUBE_EXTRACTOR_ARGS: originalYoutubeExtractorArgs,
+    });
   });
 
   it("createAudioDownloader should call youtube-dl with canonical URL and output path", async () => {
-    Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = undefined;
-    Bun.env.YOUTUBE_COOKIES_PATH = undefined;
-    Bun.env.YOUTUBE_EXTRACTOR_ARGS = undefined;
+    delete Bun.env.YOUTUBE_COOKIES_FROM_BROWSER;
+    delete Bun.env.YOUTUBE_COOKIES_PATH;
+    delete Bun.env.YOUTUBE_EXTRACTOR_ARGS;
 
     const calls: Array<{
       url: string;

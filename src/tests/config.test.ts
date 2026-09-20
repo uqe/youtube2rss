@@ -25,10 +25,14 @@ import {
   parseIntegerList,
   requireEnv,
 } from "../config.ts";
+import { restoreEnvironment } from "./environment.ts";
 
 describe("config tests", () => {
   const environmentVariableNames = [
     "IS_TEST",
+    "TEST_VAR",
+    "MISSING_VAR",
+    "EMPTY_VAR",
     "SERVER_URL",
     "S3_ENDPOINT",
     "S3_BUCKET",
@@ -49,16 +53,14 @@ describe("config tests", () => {
   beforeEach(() => {
     for (const name of environmentVariableNames) {
       originalEnv[name] = Bun.env[name];
-      Bun.env[name] = undefined;
+      delete Bun.env[name];
     }
 
     Bun.env.IS_TEST = "true";
   });
 
   afterEach(() => {
-    for (const name of environmentVariableNames) {
-      Bun.env[name] = originalEnv[name];
-    }
+    restoreEnvironment(originalEnv);
   });
 
   describe("isTestEnv", () => {
@@ -73,7 +75,7 @@ describe("config tests", () => {
     });
 
     it("should return false when IS_TEST is undefined", () => {
-      Bun.env.IS_TEST = undefined;
+      delete Bun.env.IS_TEST;
       expect(isTestEnv()).toBe(false);
     });
 
@@ -162,10 +164,10 @@ describe("config tests", () => {
     });
 
     it("should return undefined values when environment variables are not set", () => {
-      Bun.env.S3_ENDPOINT = undefined;
-      Bun.env.S3_BUCKET = undefined;
-      Bun.env.S3_ACCESS_KEY = undefined;
-      Bun.env.S3_SECRET_KEY = undefined;
+      delete Bun.env.S3_ENDPOINT;
+      delete Bun.env.S3_BUCKET;
+      delete Bun.env.S3_ACCESS_KEY;
+      delete Bun.env.S3_SECRET_KEY;
 
       const config = getS3Config();
 
@@ -191,7 +193,7 @@ describe("config tests", () => {
     });
 
     it("should reject configuration when S3_ENDPOINT is missing", () => {
-      Bun.env.S3_ENDPOINT = undefined;
+      delete Bun.env.S3_ENDPOINT;
       Bun.env.S3_BUCKET = "my-bucket";
       Bun.env.S3_ACCESS_KEY = "access-key";
       Bun.env.S3_SECRET_KEY = "secret-key";
@@ -201,7 +203,7 @@ describe("config tests", () => {
 
     it("should reject configuration when S3_BUCKET is missing", () => {
       Bun.env.S3_ENDPOINT = "https://s3.example.com";
-      Bun.env.S3_BUCKET = undefined;
+      delete Bun.env.S3_BUCKET;
       Bun.env.S3_ACCESS_KEY = "access-key";
       Bun.env.S3_SECRET_KEY = "secret-key";
 
@@ -211,7 +213,7 @@ describe("config tests", () => {
     it("should reject configuration when S3_ACCESS_KEY is missing", () => {
       Bun.env.S3_ENDPOINT = "https://s3.example.com";
       Bun.env.S3_BUCKET = "my-bucket";
-      Bun.env.S3_ACCESS_KEY = undefined;
+      delete Bun.env.S3_ACCESS_KEY;
       Bun.env.S3_SECRET_KEY = "secret-key";
 
       expect(() => isS3Configured()).toThrow("S3_ACCESS_KEY");
@@ -221,7 +223,7 @@ describe("config tests", () => {
       Bun.env.S3_ENDPOINT = "https://s3.example.com";
       Bun.env.S3_BUCKET = "my-bucket";
       Bun.env.S3_ACCESS_KEY = "access-key";
-      Bun.env.S3_SECRET_KEY = undefined;
+      delete Bun.env.S3_SECRET_KEY;
 
       expect(() => isS3Configured()).toThrow("S3_SECRET_KEY");
     });
@@ -243,7 +245,7 @@ describe("config tests", () => {
     });
 
     it("should return undefined when TELEGRAM_BOT_TOKEN is not set", () => {
-      Bun.env.TELEGRAM_BOT_TOKEN = undefined;
+      delete Bun.env.TELEGRAM_BOT_TOKEN;
       expect(getBotToken()).toBeUndefined();
     });
   });
@@ -256,7 +258,7 @@ describe("config tests", () => {
     });
 
     it("should throw error when environment variable is not set", () => {
-      Bun.env.MISSING_VAR = undefined;
+      delete Bun.env.MISSING_VAR;
       expect(() => requireEnv("MISSING_VAR")).toThrow("MISSING_VAR is missing");
     });
 
@@ -275,7 +277,7 @@ describe("config tests", () => {
 
     it("should throw error when SERVER_URL is not set", () => {
       Bun.env.IS_TEST = "false";
-      Bun.env.SERVER_URL = undefined;
+      delete Bun.env.SERVER_URL;
       expect(() => getRequiredServerUrl()).toThrow("SERVER_URL is missing");
     });
 
@@ -303,7 +305,7 @@ describe("config tests", () => {
     });
 
     it("should throw error when TELEGRAM_BOT_TOKEN is not set", () => {
-      Bun.env.TELEGRAM_BOT_TOKEN = undefined;
+      delete Bun.env.TELEGRAM_BOT_TOKEN;
       expect(() => getRequiredBotToken()).toThrow("TELEGRAM_BOT_TOKEN is missing");
     });
   });
@@ -338,7 +340,7 @@ describe("config tests", () => {
     });
 
     it("should return 3000 as default when PORT is not set", () => {
-      Bun.env.PORT = undefined;
+      delete Bun.env.PORT;
       expect(getPort()).toBe(3000);
     });
 
@@ -365,7 +367,7 @@ describe("config tests", () => {
 
   describe("getYoutubeDownloadTimeoutMs", () => {
     it("should return default timeout when YOUTUBE_DOWNLOAD_TIMEOUT_MS is not set", () => {
-      Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS = undefined;
+      delete Bun.env.YOUTUBE_DOWNLOAD_TIMEOUT_MS;
       expect(getYoutubeDownloadTimeoutMs()).toBe(1800000);
     });
 
@@ -387,15 +389,15 @@ describe("config tests", () => {
 
   describe("getYoutubeDlAuthOptions", () => {
     it("should use cookies.txt by default", () => {
-      Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = undefined;
-      Bun.env.YOUTUBE_COOKIES_PATH = undefined;
-      Bun.env.YOUTUBE_EXTRACTOR_ARGS = undefined;
+      delete Bun.env.YOUTUBE_COOKIES_FROM_BROWSER;
+      delete Bun.env.YOUTUBE_COOKIES_PATH;
+      delete Bun.env.YOUTUBE_EXTRACTOR_ARGS;
 
       expect(getYoutubeDlAuthOptions()).toEqual({ cookies: "./cookies.txt" });
     });
 
     it("should use configured cookies path", () => {
-      Bun.env.YOUTUBE_COOKIES_FROM_BROWSER = undefined;
+      delete Bun.env.YOUTUBE_COOKIES_FROM_BROWSER;
       Bun.env.YOUTUBE_COOKIES_PATH = "./private/cookies.txt";
 
       expect(getYoutubeDlAuthOptions()).toEqual({ cookies: "./private/cookies.txt" });
@@ -420,7 +422,7 @@ describe("config tests", () => {
     });
 
     it('should return "info" as default when LOG_LEVEL is not set', () => {
-      Bun.env.LOG_LEVEL = undefined;
+      delete Bun.env.LOG_LEVEL;
       expect(getLogLevel()).toBe("info");
     });
 
@@ -499,7 +501,7 @@ describe("config tests", () => {
     });
 
     it("should throw error when TELEGRAM_WHITELIST is not set", () => {
-      Bun.env.TELEGRAM_WHITELIST = undefined;
+      delete Bun.env.TELEGRAM_WHITELIST;
       expect(() => getTelegramWhitelist()).toThrow(
         "TELEGRAM_WHITELIST environment variable must be set with at least one valid Telegram user ID",
       );

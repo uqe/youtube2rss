@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import {
   formatSeconds,
@@ -9,8 +9,21 @@ import {
   getYoutubeVideoUrl,
   isS3Configured,
 } from "../helpers.ts";
+import { restoreEnvironment } from "./environment.ts";
 
 describe("helpers tests", () => {
+  let originalEnv: Record<string, string | undefined>;
+
+  beforeEach(() => {
+    originalEnv = Object.fromEntries(
+      ["IS_TEST", "S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY", "S3_SECRET_KEY"].map((name) => [name, Bun.env[name]]),
+    );
+  });
+
+  afterEach(() => {
+    restoreEnvironment(originalEnv);
+  });
+
   describe("getYoutubeVideoId", () => {
     it("getYoutubeVideoId should return null for invalid URLs", () => {
       const invalidUrls = [
@@ -146,24 +159,15 @@ describe("helpers tests", () => {
 
       const result = isS3Configured();
       expect(result).toBe(true);
-
-      Bun.env.S3_ENDPOINT = "";
-      Bun.env.S3_BUCKET = "";
-      Bun.env.S3_ACCESS_KEY = "";
-      Bun.env.S3_SECRET_KEY = "";
     });
 
     it("isS3Configured rejects a partial S3 configuration", () => {
       Bun.env.S3_ENDPOINT = "example.com";
       Bun.env.S3_BUCKET = "my-bucket";
       Bun.env.S3_ACCESS_KEY = "my-access-key";
-      // S3_SECRET_KEY is missing
+      delete Bun.env.S3_SECRET_KEY;
 
       expect(() => isS3Configured()).toThrow("Incomplete S3 configuration");
-
-      Bun.env.S3_ENDPOINT = "";
-      Bun.env.S3_BUCKET = "";
-      Bun.env.S3_ACCESS_KEY = "";
     });
   });
 
