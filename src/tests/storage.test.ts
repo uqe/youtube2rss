@@ -26,30 +26,6 @@ describe("storage tests", () => {
     Bun.env.S3_SECRET_KEY = originalEnv.S3_SECRET_KEY;
   });
 
-  describe("Storage interface", () => {
-    it("should define correct interface methods", () => {
-      const storage: Storage = {
-        kind: "local",
-        uploadAudio: async () => {},
-        uploadArtwork: async () => {},
-        uploadChapters: async () => {},
-        uploadRss: async () => {},
-        ensureCoverImage: async () => {},
-        getAudioMetadata: async () => ({ exists: true }),
-        getArtworkMetadata: async () => ({ exists: true }),
-        getChaptersMetadata: async () => ({ exists: true }),
-        deleteEpisodeAssets: async () => {},
-      };
-
-      expect(typeof storage.uploadAudio).toBe("function");
-      expect(typeof storage.uploadArtwork).toBe("function");
-      expect(typeof storage.uploadChapters).toBe("function");
-      expect(typeof storage.uploadRss).toBe("function");
-      expect(typeof storage.ensureCoverImage).toBe("function");
-      expect(typeof storage.deleteEpisodeAssets).toBe("function");
-    });
-  });
-
   describe("Local storage (when S3 is not configured)", () => {
     it("should return a local storage instance from getStorage", async () => {
       const storage = getStorage();
@@ -65,57 +41,6 @@ describe("storage tests", () => {
 
     it("should reuse the same storage instance across calls", () => {
       expect(getStorage()).toBe(getStorage());
-    });
-
-    it("uploadAudio should resolve without error for local storage", async () => {
-      const mockLocalStorage: Storage = {
-        kind: "local",
-        uploadAudio: async (): Promise<void> => {},
-        uploadArtwork: async (): Promise<void> => {},
-        uploadChapters: async (): Promise<void> => {},
-        uploadRss: async (): Promise<void> => {},
-        ensureCoverImage: async (): Promise<void> => {},
-        getAudioMetadata: async () => ({ exists: true }),
-        getArtworkMetadata: async () => ({ exists: true }),
-        getChaptersMetadata: async () => ({ exists: true }),
-        deleteEpisodeAssets: async (): Promise<void> => {},
-      };
-
-      await expect(mockLocalStorage.uploadAudio("testId", "/path/to/file.mp3")).resolves.toBeUndefined();
-    });
-
-    it("uploadRss should resolve without error for local storage", async () => {
-      const mockLocalStorage: Storage = {
-        kind: "local",
-        uploadAudio: async (): Promise<void> => {},
-        uploadArtwork: async (): Promise<void> => {},
-        uploadChapters: async (): Promise<void> => {},
-        uploadRss: async (): Promise<void> => {},
-        ensureCoverImage: async (): Promise<void> => {},
-        getAudioMetadata: async () => ({ exists: true }),
-        getArtworkMetadata: async () => ({ exists: true }),
-        getChaptersMetadata: async () => ({ exists: true }),
-        deleteEpisodeAssets: async (): Promise<void> => {},
-      };
-
-      await expect(mockLocalStorage.uploadRss("/path/to/rss.xml")).resolves.toBeUndefined();
-    });
-
-    it("ensureCoverImage should resolve without error for local storage", async () => {
-      const mockLocalStorage: Storage = {
-        kind: "local",
-        uploadAudio: async (): Promise<void> => {},
-        uploadArtwork: async (): Promise<void> => {},
-        uploadChapters: async (): Promise<void> => {},
-        uploadRss: async (): Promise<void> => {},
-        ensureCoverImage: async (): Promise<void> => {},
-        getAudioMetadata: async () => ({ exists: true }),
-        getArtworkMetadata: async () => ({ exists: true }),
-        getChaptersMetadata: async () => ({ exists: true }),
-        deleteEpisodeAssets: async (): Promise<void> => {},
-      };
-
-      await expect(mockLocalStorage.ensureCoverImage()).resolves.toBeUndefined();
     });
 
     it("should read local audio metadata without opening the file", async () => {
@@ -210,18 +135,6 @@ describe("storage tests", () => {
       expect(chaptersResult).toBeUndefined();
       expect(rssResult).toBeUndefined();
       expect(coverResult).toBeUndefined();
-    });
-
-    it("should handle multiple calls to local storage methods", async () => {
-      const localStorage = createLocalStorage();
-
-      await localStorage.uploadAudio("video1", "/path/1.mp3");
-      await localStorage.uploadAudio("video2", "/path/2.mp3");
-      await localStorage.uploadRss("/path/rss.xml");
-      await localStorage.ensureCoverImage();
-      await localStorage.ensureCoverImage();
-
-      expect(true).toBe(true);
     });
 
     it("createStorage should return local storage when remote storage is not configured", async () => {

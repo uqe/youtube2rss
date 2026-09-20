@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, mock } from "bun:test";
 
 import type { Payload } from "youtube-dl-exec";
 
@@ -66,8 +66,8 @@ const createStorage = () => {
     },
     async uploadRss(): Promise<void> {},
     async ensureCoverImage(): Promise<void> {},
-    async getAudioMetadata(): Promise<{ exists: boolean }> {
-      return { exists: true };
+    async getAudioMetadata(): Promise<{ exists: boolean; size: number }> {
+      return { exists: true, size: 5 };
     },
     async getArtworkMetadata(): Promise<{ exists: boolean }> {
       return { exists: true };
@@ -538,6 +538,245 @@ describe("download tests", () => {
     expect(result).toEqual({ status: "failed" });
     expect(generateFeedCalls).toBe(0);
     expect(publicationStatuses.get("missingPendingAudio")).toBe("pending");
+  });
+
+  it.each(["empty audio", "missing thumbnail", "missing artwork", "empty artwork"])(
+    "should reject %s and remove prepared files before uploading",
+    async (scenario) => {
+      const { repository, videos } = createRepository();
+      const storageState = createStorage();
+      const generateFeed = mock(async () => {});
+      const dependencies = createDependencies({
+        repository,
+        async downloadAudio(_videoId, outputFilePath) {
+          await Bun.write(outputFilePath, scenario === "empty audio" ? "" : "audio");
+        },
+        async getVideoInfo(videoId) {
+          return createPayload({
+            id: videoId,
+            thumbnail: scenario === "missing thumbnail" ? undefined : "https://example.com/cover.jpg",
+            chapters: [{ start_time: 0, title: "Intro" }],
+          });
+        },
+        async downloadArtwork(_url, outputFilePath) {
+          if (scenario !== "missing artwork") {
+            await Bun.write(outputFilePath, scenario === "empty artwork" ? "" : "artwork");
+          }
+        },
+        getStorage: () => storageState.storage,
+        generateFeed,
+      });
+
+      await expect(createDownloader(dependencies)("invalidAssets")).resolves.toEqual({ status: "failed" });
+
+      expect(videos).toEqual([]);
+      expect(generateFeed).not.toHaveBeenCalled();
+      expect(storageState.uploadAudioCalls).toBe(0);
+      for (const filePath of testFiles) {
+        expect(await Bun.file(filePath).exists()).toBe(false);
+      }
+    },
+  );
+
+  it.each(["audio", "artwork", "chapters", "record"])(
+    "should preserve a pending publication when its %s is unavailable",
+    async (missing) => {
+      const video = createVideoFromInfo(
+        createPayload(),
+        "/pending/audio.mp3",
+        new Date(),
+        "/pending/artwork.jpg",
+        "/pending/chapters.json",
+      );
+      const { repository, publicationStatuses } = createRepository(missing === "record" ? [] : [video]);
+      publicationStatuses.set(video.video_id, "pending");
+      const generateFeed = mock(async () => {});
+      const downloadAudio = mock(async () => {});
+      const deleteFile = mock(async () => {});
+      const deleteEpisodeAssets = mock(async () => {});
+      const result = await createDownloader(
+        createDependencies({
+          repository,
+          generateFeed,
+          downloadAudio,
+          deleteFile,
+          getStorage: () => ({
+            ...createStorage().storage,
+            async getAudioMetadata() {
+              return { exists: true, size: missing === "audio" ? 0 : 5 };
+            },
+            async getArtworkMetadata() {
+              return { exists: missing !== "artwork" };
+            },
+            async getChaptersMetadata() {
+              return { exists: missing !== "chapters" };
+            },
+            deleteEpisodeAssets,
+          }),
+        }),
+      )(video.video_id);
+
+      expect(result).toEqual({ status: "failed" });
+      expect(publicationStatuses.get(video.video_id)).toBe("pending");
+      expect(generateFeed).not.toHaveBeenCalled();
+      expect(downloadAudio).not.toHaveBeenCalled();
+      expect(deleteFile).not.toHaveBeenCalled();
+      expect(deleteEpisodeAssets).not.toHaveBeenCalled();
+    },
+  );
+
+  it("should retain persisted assets after RSS failure and recover without reuploading", async () => {
+    const { repository, videos, publicationStatuses } = createRepository();
+    const storageState = createStorage();
+    const deleteEpisodeAssets = mock(async () => {});
+    const deleteFile = mock(async () => {});
+    const generateFeed = mock(async () => {});
+    generateFeed.mockRejectedValueOnce(new Error("RSS unavailable"));
+    const download = createDownloader(
+      createDependencies({
+        repository,
+        async downloadAudio(_videoId, outputFilePath) {
+          await Bun.write(outputFilePath, "audio");
+        },
+        async getVideoInfo(videoId) {
+          return createPayload({ id: videoId, chapters: [{ start_time: 0, title: "Intro" }] });
+        },
+        getStorage: () => ({ ...storageState.storage, deleteEpisodeAssets }),
+        deleteFile,
+        generateFeed,
+      }),
+    );
+
+    await expect(download("persistedAssets")).resolves.toEqual({ status: "failed" });
+    expect(publicationStatuses.get("persistedAssets")).toBe("pending");
+    expect(videos).toHaveLength(1);
+    for (const filePath of testFiles) {
+      expect(await Bun.file(filePath).exists()).toBe(true);
+    }
+    expect(deleteEpisodeAssets).not.toHaveBeenCalled();
+    expect(deleteFile).not.toHaveBeenCalled();
+
+    await expect(download("persistedAssets")).resolves.toEqual({ status: "recovered" });
+    expect(publicationStatuses.get("persistedAssets")).toBe("published");
+    expect(videos).toHaveLength(1);
+    expect(generateFeed).toHaveBeenCalledTimes(2);
+    expect(storageState.uploadAudioCalls).toBe(1);
+    expect(storageState.uploadArtworkCalls).toBe(1);
+    expect(storageState.uploadChaptersCalls).toBe(1);
+  });
+
+  it("should roll back uploaded assets when saving the database record fails", async () => {
+    const { repository, videos } = createRepository();
+    const deleteEpisodeAssets = mock(async (..._args: Parameters<Storage["deleteEpisodeAssets"]>) => {});
+    const generateFeed = mock(async () => {});
+    const result = await createDownloader(
+      createDependencies({
+        repository: {
+          ...repository,
+          create() {
+            throw new Error("Database unavailable");
+          },
+        },
+        async downloadAudio(_videoId, outputFilePath) {
+          await Bun.write(outputFilePath, "audio");
+        },
+        getStorage: () => ({ ...createStorage().storage, deleteEpisodeAssets }),
+        generateFeed,
+      }),
+    )("databaseFailure");
+
+    expect(result).toEqual({ status: "failed" });
+    expect(videos).toEqual([]);
+    expect(generateFeed).not.toHaveBeenCalled();
+    expect(deleteEpisodeAssets).toHaveBeenCalledTimes(1);
+    expect(deleteEpisodeAssets).toHaveBeenCalledWith(
+      "databaseFailure",
+      "./src/tests/data/databaseFailure.download-test.mp3",
+      "./src/tests/data/databaseFailure.download-test.jpg",
+      undefined,
+    );
+  });
+
+  it("should report the original failure even when cleanup also fails", async () => {
+    const error = mock((_message: string) => {});
+    const result = await createDownloader(
+      createDependencies({
+        async downloadAudio() {
+          throw new Error("Download interrupted");
+        },
+        async deleteFile() {
+          throw new Error("Cleanup denied");
+        },
+        logger: { ...createLogger(), error },
+      }),
+    )("cleanupFailure");
+
+    expect(result).toEqual({ status: "failed" });
+    expect(error.mock.calls.map(([message]) => JSON.parse(message))).toEqual([
+      expect.objectContaining({ event: "download_cleanup_failed", error: "Error: Cleanup denied" }),
+      expect.objectContaining({ event: "video_processing_failed", error: "Error: Download interrupted" }),
+    ]);
+  });
+
+  it("should publish successfully even when progress and reply handlers throw", async () => {
+    const { repository, publicationStatuses } = createRepository();
+    const error = mock((_message: string) => {});
+    const download = createDownloader(
+      createDependencies({
+        repository,
+        async downloadAudio(_videoId, outputFilePath) {
+          await Bun.write(outputFilePath, "audio");
+        },
+        async getVideoInfo(videoId) {
+          return createPayload({ id: videoId });
+        },
+        logger: { ...createLogger(), error },
+      }),
+    );
+
+    await expect(
+      download(
+        "notificationFailure",
+        () => {
+          throw new Error("Reply unavailable");
+        },
+        () => {
+          throw new Error("Progress unavailable");
+        },
+      ),
+    ).resolves.toEqual({ status: "published" });
+
+    expect(publicationStatuses.get("notificationFailure")).toBe("published");
+    const events = error.mock.calls.map(([message]) => JSON.parse(message).event);
+    expect(events).toContain("progress_notification_failed");
+    expect(events).toContain("download_notification_failed");
+    expect(events).not.toContain("video_processing_failed");
+  });
+
+  it("should download and publish concurrent requests for the same video only once", async () => {
+    const { repository, videos } = createRepository();
+    const downloadAudio = mock(async (_videoId: string, outputFilePath: string) => {
+      await Bun.write(outputFilePath, "audio");
+    });
+    const generateFeed = mock(async () => {});
+    const download = createDownloader(
+      createDependencies({
+        repository,
+        downloadAudio,
+        generateFeed,
+        async getVideoInfo(videoId) {
+          return createPayload({ id: videoId });
+        },
+      }),
+    );
+
+    expect(await Promise.all([download("sameVideo"), download("sameVideo")])).toEqual([
+      { status: "published" },
+      { status: "already-published" },
+    ]);
+    expect(videos).toHaveLength(1);
+    expect(downloadAudio).toHaveBeenCalledTimes(1);
+    expect(generateFeed).toHaveBeenCalledTimes(1);
   });
 
   it("should serialize video processing to protect RSS publication", async () => {
