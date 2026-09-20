@@ -2,25 +2,22 @@ import { timingSafeEqual } from "node:crypto";
 
 import { adminService as defaultAdminService } from "./admin.ts";
 import type { AdminService } from "./admin.ts";
-import { getAdminPassword } from "./config.ts";
-import { download } from "./download.ts";
-import type { DownloadProgress, DownloadProgressHandler, DownloadResult } from "./download.ts";
+import { collectionRepository } from "./collections.ts";
+import type { CollectionRepository } from "./collections.ts";
+import { getAdminPassword, getRequiredServerUrl } from "./config.ts";
+import { videoRepository } from "./db.ts";
+import type { VideoRepository } from "./db.ts";
 import { getYoutubeVideoId } from "./helpers.ts";
-
-type DownloadVideo = (videoId: string, progressHandler?: DownloadProgressHandler) => Promise<DownloadResult>;
-
-interface AdminJob {
-  id: string;
-  videoId: string;
-  status: "processing" | "completed";
-  progress: DownloadProgress;
-  result?: DownloadResult["status"];
-}
+import { jobRepository } from "./jobs.ts";
+import type { JobRepository } from "./jobs.ts";
 
 export interface AdminHandlerOptions {
   password?: string;
   service?: AdminService;
-  downloadVideo?: DownloadVideo;
+  jobs?: JobRepository;
+  collections?: CollectionRepository;
+  videos?: VideoRepository;
+  baseUrl?: string;
   adminPagePath?: string;
 }
 
@@ -68,7 +65,11 @@ const parseJobIdPath = (pathname: string) => {
   return match?.[1] ?? null;
 };
 
-const toVideoDto = (video: ReturnType<AdminService["listVideos"]>[number]) => ({
+const toVideoDto = (
+  video: ReturnType<AdminService["listVideos"]>[number],
+  publicationStatus: string | null = null,
+) => ({
+  publicationStatus,
   id: video.video_id,
   title: video.video_name,
   url: video.video_url,
@@ -76,29 +77,15 @@ const toVideoDto = (video: ReturnType<AdminService["listVideos"]>[number]) => ({
   duration: video.video_length,
 });
 
-const defaultDownloadVideo: DownloadVideo = (videoId, progressHandler) => download(videoId, undefined, progressHandler);
-
-const getTerminalProgress = (result: DownloadResult["status"], currentProgress: DownloadProgress): DownloadProgress => {
-  if (result === "failed") {
-    return { ...currentProgress, stage: "failed", message: "Episode processing failed" };
-  }
-
-  const messages: Record<Exclude<DownloadResult["status"], "failed">, string> = {
-    published: "Episode published",
-    recovered: "Episode publication recovered",
-    "already-published": "Episode already published",
-  };
-  return { stage: "completed", percent: 100, message: messages[result] };
-};
-
 export const createAdminHandler = ({
   password = getAdminPassword(),
   service = defaultAdminService,
-  downloadVideo = defaultDownloadVideo,
+  jobs = jobRepository,
+  collections = collectionRepository,
+  videos = videoRepository,
+  baseUrl,
   adminPagePath = "./public/admin.html",
 }: AdminHandlerOptions = {}) => {
-  const jobs = new Map<string, AdminJob>();
-
   return async (request: Request): Promise<Response> => {
     const { pathname } = new URL(request.url);
 
@@ -131,8 +118,67 @@ export const createAdminHandler = ({
       });
     }
 
+    const collectionMatch = /^\/api\/admin\/collections\/([a-f0-9-]{36})\/videos\/([\w-]+)$/.exec(pathname);
+    if (collectionMatch && ["PUT", "DELETE"].includes(request.method)) {
+      const [, collectionId, videoId] = collectionMatch;
+      if (!collections.get(collectionId) || !videos.exists(videoId)) {
+        return jsonResponse({ error: "Collection or episode not found." }, 404);
+      }
+      return jsonResponse(
+        {
+          job: jobs.enqueue({
+            kind: request.method === "PUT" ? "collection-add" : "collection-remove",
+            collectionId,
+            videoId,
+          }),
+        },
+        202,
+      );
+    }
+    if (pathname === "/api/admin/collections" && request.method === "GET") {
+      return jsonResponse({
+        collections: collections.list().map((item) => ({
+          id: item.id,
+          name: item.name,
+          createdAt: item.createdAt,
+          feedUrl: `${baseUrl ?? getRequiredServerUrl()}/feeds/${item.id}.xml`,
+        })),
+        feedUrl: `${baseUrl ?? getRequiredServerUrl()}/rss.xml`,
+      });
+    }
+    if (pathname === "/api/admin/collections" && request.method === "POST") {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return jsonResponse({ error: "The request body must contain valid JSON." }, 400);
+      }
+      const name =
+        typeof body === "object" && body && "name" in body && typeof body.name === "string" ? body.name.trim() : "";
+      if (!name || name.length > 80) {
+        return jsonResponse({ error: "Enter a collection name of 1–80 characters." }, 400);
+      }
+      const collection = collections.create(name);
+      jobs.enqueue({ kind: "refresh" });
+      return jsonResponse({ collection }, 201);
+    }
+    if (pathname === "/api/admin/jobs" && request.method === "GET") {
+      return jsonResponse({ jobs: jobs.list() });
+    }
+    const retryMatch = /^\/api\/admin\/jobs\/([a-f0-9-]{36})\/retry$/.exec(pathname);
+    if (retryMatch && request.method === "POST") {
+      const job = jobs.retry(retryMatch[1]);
+      return job ? jsonResponse({ job }, 202) : jsonResponse({ error: "Failed job not found." }, 404);
+    }
     if (pathname === "/api/admin/videos" && request.method === "GET") {
-      return jsonResponse({ videos: service.listVideos().map(toVideoDto) });
+      const collectionId = new URL(request.url).searchParams.get("collection");
+      if (collectionId && !collections.get(collectionId)) {
+        return jsonResponse({ error: "Collection not found." }, 404);
+      }
+      const items = collectionId ? collections.videos(collectionId) : service.listVideos();
+      return jsonResponse({
+        videos: items.map((video) => toVideoDto(video, videos.getPublicationStatus(video.video_id))),
+      });
     }
 
     if (pathname === "/api/admin/videos" && request.method === "POST") {
@@ -152,66 +198,26 @@ export const createAdminHandler = ({
         return jsonResponse({ error: "Enter a valid YouTube video URL." }, 400);
       }
 
-      if (service.listVideos().some((video) => video.video_id === videoId)) {
+      const collectionId = typeof body === "object" && body && "collectionId" in body ? body.collectionId : undefined;
+      if (collectionId !== undefined && (typeof collectionId !== "string" || !collections.get(collectionId))) {
+        return jsonResponse({ error: "Collection not found." }, 400);
+      }
+      const published = videos.getPublicationStatus(videoId) === "published";
+      if (published && !collectionId) {
         return jsonResponse({ error: "This video is already in the RSS feed." }, 409);
       }
-
-      const runningJob = [...jobs.values()].find((job) => job.videoId === videoId && job.status === "processing");
-      if (runningJob) {
-        return jsonResponse({ job: runningJob }, 202);
-      }
-
-      const job: AdminJob = {
-        id: crypto.randomUUID(),
-        videoId,
-        status: "processing",
-        progress: { stage: "queued", percent: 0, message: "Waiting to start" },
-      };
-      jobs.set(job.id, job);
-
-      void downloadVideo(videoId, (progress) => {
-        const currentJob = jobs.get(job.id);
-        if (currentJob?.status === "processing") {
-          jobs.set(job.id, { ...currentJob, progress });
-        }
-      })
-        .then((result) => {
-          const currentJob = jobs.get(job.id) ?? job;
-          jobs.set(job.id, {
-            ...currentJob,
-            status: "completed",
-            result: result.status,
-            progress: getTerminalProgress(result.status, currentJob.progress),
-          });
-          return undefined;
-        })
-        .catch(() => {
-          const currentJob = jobs.get(job.id) ?? job;
-          jobs.set(job.id, {
-            ...currentJob,
-            status: "completed",
-            result: "failed",
-            progress: getTerminalProgress("failed", currentJob.progress),
-          });
-        });
-
-      return jsonResponse({ job }, 202);
+      return jsonResponse(
+        { job: jobs.enqueue({ kind: published ? "collection-add" : "download", videoId, collectionId }) },
+        202,
+      );
     }
 
     const videoId = parseVideoIdPath(pathname);
     if (videoId && request.method === "DELETE") {
-      try {
-        const video = await service.deleteVideo(videoId);
-        return jsonResponse({ deleted: toVideoDto(video) });
-      } catch (error) {
-        const status = error instanceof Error && error.name === "AdminVideoNotFoundError" ? 404 : 500;
-        return jsonResponse(
-          {
-            error: status === 404 ? "Video not found." : "The episode could not be fully deleted. Please try again.",
-          },
-          status,
-        );
+      if (!videos.findById(videoId)) {
+        return jsonResponse({ error: "Video not found." }, 404);
       }
+      return jsonResponse({ job: jobs.enqueue({ kind: "delete", videoId }) }, 202);
     }
 
     const jobId = parseJobIdPath(pathname);

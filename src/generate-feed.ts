@@ -1,3 +1,6 @@
+import { mkdir, rename, rm } from "node:fs/promises";
+import { dirname } from "node:path";
+
 import { Podcast } from "podcast";
 
 import { getRequiredServerUrl, getRssFilePath } from "./config.ts";
@@ -21,12 +24,19 @@ export const getChaptersUrl = (videoId: string, baseUrl = serverUrl()) => `${bas
 export interface FeedOptionsInput {
   baseUrl?: string;
   now?: Date;
+  title?: string;
+  feedPath?: string;
 }
 
-export const createFeedOptions = ({ baseUrl = serverUrl(), now = new Date() }: FeedOptionsInput = {}) => ({
-  title: "YouTube",
+export const createFeedOptions = ({
+  baseUrl = serverUrl(),
+  now = new Date(),
+  title = "YouTube",
+  feedPath = "rss.xml",
+}: FeedOptionsInput = {}) => ({
+  title,
   description: "YouTube personal feed",
-  feedUrl: `${baseUrl}/rss.xml`,
+  feedUrl: `${baseUrl}/${feedPath}`,
   siteUrl: repositoryUrl,
   imageUrl: `${baseUrl}/cover.jpg`,
   author: "Arthur N",
@@ -114,6 +124,8 @@ export interface GenerateFeedOptions {
   publish?: boolean;
   verifyAudio?: boolean;
   includeEnclosures?: boolean;
+  title?: string;
+  feedPath?: string;
 }
 
 const getTimestamp = (video: Video) => {
@@ -131,9 +143,11 @@ export const generateFeed = async (
     publish = true,
     verifyAudio = true,
     includeEnclosures = true,
+    title,
+    feedPath = "rss.xml",
   }: GenerateFeedOptions = {},
 ) => {
-  const feed = new Podcast(createFeedOptions({ baseUrl, now }));
+  const feed = new Podcast(createFeedOptions({ baseUrl, now, title, feedPath }));
   const orderedVideos = allVideos.toSorted((left, right) => getTimestamp(right) - getTimestamp(left));
 
   for (const item of orderedVideos) {
@@ -155,10 +169,17 @@ export const generateFeed = async (
     feed.addItem(createFeedItem(item, includeEnclosures ? audio : undefined, baseUrl, chapters.exists));
   }
 
-  await Bun.write(rssFilePath, feed.buildXml({ indent: "  " }));
+  await mkdir(dirname(rssFilePath), { recursive: true });
+  const temporaryPath = `${rssFilePath}.${crypto.randomUUID()}.tmp`;
+  try {
+    await Bun.write(temporaryPath, feed.buildXml({ indent: "  " }));
+    await rename(temporaryPath, rssFilePath);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
 
   if (publish) {
-    await storage.uploadRss(rssFilePath);
+    await storage.uploadRss(rssFilePath, feedPath);
     await storage.ensureCoverImage();
   }
 };

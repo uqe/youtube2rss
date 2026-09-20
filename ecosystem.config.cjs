@@ -1,6 +1,21 @@
 module.exports = {
   apps: [
     {
+      name: "youtube2rss-worker",
+      script: "src/worker.ts",
+      interpreter: "bun",
+      instances: 1,
+      exec_mode: "fork",
+      watch: false,
+      restart_delay: 1000,
+      kill_timeout: 30000,
+      env: { NODE_ENV: "production" },
+      env_development: { NODE_ENV: "development" },
+      error_file: "./logs/worker-err.log",
+      out_file: "./logs/worker-out.log",
+      time: true,
+    },
+    {
       name: "youtube2rss",
       script: "src/index.ts",
       interpreter: "bun",
@@ -24,7 +39,6 @@ module.exports = {
       max_restarts: 10,
       min_uptime: "10s",
       max_memory_restart: "1G",
-      cron_restart: "0 0 * * *", // Перезапуск каждый день в полночь
       kill_timeout: 5000,
     },
     {

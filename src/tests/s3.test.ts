@@ -106,6 +106,16 @@ describe("s3 storage tests", () => {
     expect(writes).toEqual([]);
   });
 
+  it("should publish collection RSS without overwriting the main feed", async () => {
+    const { client, writes } = createClient();
+    const storage = createS3Storage({ client, log: silentLogger });
+
+    await storage.uploadRss("/tmp/rss.xml");
+    await storage.uploadRss("/tmp/interviews.xml", "feeds/interviews.xml");
+
+    expect(writes).toEqual(["rss.xml", "feeds/interviews.xml"]);
+  });
+
   it("should upload cover image when it is missing", async () => {
     const { client, writes, existsChecks } = createClient();
     const storage = createS3Storage({

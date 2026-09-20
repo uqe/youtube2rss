@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <title>youtube2rss — feed management</title>
     <link rel="icon" href="/admin-favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/admin.css?v=3" />
-    <script src="/admin.js?v=3" defer></script>
+    <link rel="stylesheet" href="/admin.css?v=4" />
+    <script src="/admin.js?v=4" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -17,7 +17,7 @@
       </a>
       <nav aria-label="Main navigation">
         <span class="nav-current"><span class="live-dot"></span>Feed</span>
-        <a href="/rss.xml" target="_blank" rel="noreferrer">Open RSS ↗</a>
+        <a id="feed-link" href="/rss.xml" target="_blank" rel="noreferrer">Open RSS ↗</a>
       </nav>
     </header>
 
@@ -32,6 +32,25 @@
           <strong id="video-count">—</strong>
           <span>episodes</span>
         </div>
+      </section>
+
+      <section class="collection-panel" aria-labelledby="collections-title">
+        <div class="section-heading">
+          <h2 id="collections-title">Collections</h2>
+          <details class="collection-create">
+            <summary class="quiet-button">New collection</summary>
+            <form id="collection-form" class="collection-popover">
+              <label for="collection-name">Collection name</label>
+              <input id="collection-name" maxlength="80" required placeholder="Interviews" />
+              <button class="primary-button" type="submit">Create collection</button>
+              <p id="collection-status" class="status-message" role="status"></p>
+            </form>
+          </details>
+        </div>
+        <div id="collection-list" class="collection-list" role="group" aria-label="Choose a collection">
+          <button class="quiet-button" type="button" aria-pressed="true">All episodes</button>
+        </div>
+        <p id="collection-hint" class="collection-hint">Each collection has its own RSS subscription.</p>
       </section>
 
       <section class="add-panel" aria-labelledby="add-title">
@@ -79,10 +98,19 @@
         </div>
       </section>
 
+      <section class="queue-panel" aria-labelledby="queue-title">
+        <div class="section-heading">
+          <h2 id="queue-title">Activity</h2>
+          <span class="collection-hint">Downloads &amp; feed updates</span>
+        </div>
+        <p id="queue-status" class="status-message" role="status"></p>
+        <div id="job-list" class="job-list" aria-label="Recent jobs">Loading activity…</div>
+      </section>
+
       <section class="feed-panel" aria-labelledby="feed-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">RSS queue</p>
+            <p class="eyebrow">Library</p>
             <h2 id="feed-title">Current feed</h2>
           </div>
           <button id="refresh-button" class="quiet-button" type="button">Refresh</button>

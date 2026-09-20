@@ -75,22 +75,40 @@ const createTextElement = (tag, className, text) => {
   return element;
 };
 
+let selectedCollection = "";
+let collections = [];
+let allFeedUrl = "/rss.xml";
+let jobsSignature = "";
+let libraryRequest = 0;
+
+const enqueueAction = async (path, method, body) => {
+  await request(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  setStatus("Added to the queue. You can close this page; progress is saved.", "success");
+  await loadJobs();
+};
+
 const deleteVideo = async (video, button) => {
-  const confirmed = window.confirm(`Remove “${video.title}” from the RSS feed and delete its audio and artwork?`);
+  const collectionId = selectedCollection;
+  const confirmed = window.confirm(
+    collectionId
+      ? `Remove “${video.title}” from this collection? The episode will remain in your library.`
+      : `Delete “${video.title}” from all feeds and remove its audio and artwork?`,
+  );
   if (!confirmed) {
     return;
   }
-
   button.disabled = true;
-  button.textContent = "Deleting…";
   try {
-    await request(`/api/admin/videos/${encodeURIComponent(video.id)}`, { method: "DELETE" });
-    setStatus("The episode was removed from the RSS feed and storage.", "success");
-    await loadVideos();
+    await enqueueAction(
+      collectionId
+        ? `/api/admin/collections/${collectionId}/videos/${encodeURIComponent(video.id)}`
+        : `/api/admin/videos/${encodeURIComponent(video.id)}`,
+      "DELETE",
+    );
   } catch (error) {
+    setStatus(error instanceof Error ? error.message : "Could not queue removal.", "error");
+  } finally {
     button.disabled = false;
-    button.textContent = "Delete";
-    setStatus(error instanceof Error ? error.message : "Could not delete the episode.", "error");
   }
 };
 
@@ -107,7 +125,50 @@ const createVideoRow = (video, index) => {
   link.target = "_blank";
   link.rel = "noreferrer";
   link.textContent = video.title;
-  title.append(link, createTextElement("span", "row-id", video.id));
+  title.append(
+    link,
+    createTextElement("span", "row-id", video.publicationStatus === "pending" ? "Publication pending" : video.id),
+  );
+  if (video.publicationStatus === "pending") {
+    const retry = createTextElement("button", "quiet-button", "Retry publication");
+    retry.type = "button";
+    retry.addEventListener("click", async () => {
+      retry.disabled = true;
+      try {
+        await enqueueAction("/api/admin/videos", "POST", { url: video.url });
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        retry.disabled = false;
+      }
+    });
+    title.append(retry);
+  }
+  if (collections.length) {
+    const chooser = document.createElement("details");
+    chooser.className = "episode-collections";
+    const summary = createTextElement("summary", "collection-toggle", "Add to collection");
+    const choices = document.createElement("div");
+    choices.className = "collection-popover";
+    for (const collection of collections) {
+      const choice = createTextElement("button", "quiet-button", collection.name);
+      choice.type = "button";
+      choice.addEventListener("click", async () => {
+        choice.disabled = true;
+        try {
+          await enqueueAction(`/api/admin/collections/${collection.id}/videos/${encodeURIComponent(video.id)}`, "PUT");
+          chooser.open = false;
+        } catch (error) {
+          setStatus(error.message, "error");
+        } finally {
+          choice.disabled = false;
+        }
+      });
+      choices.append(choice);
+    }
+    chooser.append(summary, choices);
+    title.append(chooser);
+  }
   row.append(title);
 
   const metadata = document.createElement("div");
@@ -118,7 +179,7 @@ const createVideoRow = (video, index) => {
   );
   row.append(metadata);
 
-  const deleteButton = createTextElement("button", "delete-button", "Delete");
+  const deleteButton = createTextElement("button", "delete-button", selectedCollection ? "Remove" : "Delete");
   deleteButton.type = "button";
   deleteButton.addEventListener("click", () => deleteVideo(video, deleteButton));
   row.append(deleteButton);
@@ -154,9 +215,14 @@ const renderLoadError = (error) => {
 
 const loadVideos = async () => {
   elements.refresh.disabled = true;
+  const requestId = ++libraryRequest;
   try {
-    const { videos } = await request("/api/admin/videos");
-    renderVideos(videos);
+    const { videos } = await request(
+      `/api/admin/videos${selectedCollection ? `?collection=${selectedCollection}` : ""}`,
+    );
+    if (requestId === libraryRequest) {
+      renderVideos(videos);
+    }
   } catch (error) {
     renderLoadError(error);
   } finally {
@@ -164,63 +230,175 @@ const loadVideos = async () => {
   }
 };
 
-const waitForJob = async (initialJob) => {
-  setProgress(initialJob.progress);
-  for (;;) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const { job } = await request(`/api/admin/jobs/${encodeURIComponent(initialJob.id)}`);
-    setProgress(job.progress);
-    if (job.status === "completed") {
-      return job;
+const loadCollections = async () => {
+  const data = await request("/api/admin/collections");
+  collections = data.collections;
+  allFeedUrl = data.feedUrl;
+  const list = document.querySelector("#collection-list");
+  list.replaceChildren();
+  for (const collection of [{ id: "", name: "All episodes", feedUrl: allFeedUrl }, ...collections]) {
+    const button = createTextElement("button", "quiet-button", collection.name);
+    button.type = "button";
+    button.dataset.collection = collection.id;
+    button.setAttribute("aria-pressed", String(collection.id === selectedCollection));
+    button.addEventListener("click", async () => {
+      selectedCollection = collection.id;
+      for (const item of list.querySelectorAll("button")) {
+        item.setAttribute("aria-pressed", String(item === button));
+      }
+      document.querySelector("#feed-link").href = collection.feedUrl;
+      document.querySelector("#feed-title").textContent = collection.name;
+      document.querySelector("#add-title").textContent = collection.id ? `Add to ${collection.name}` : "Add to feed";
+      document.querySelector("#collection-hint").textContent = collection.id
+        ? "New links will be added to this collection and the main feed."
+        : "Each collection has its own RSS subscription.";
+      await loadVideos();
+    });
+    list.append(button);
+  }
+  document.querySelector("#feed-link").href =
+    collections.find((item) => item.id === selectedCollection)?.feedUrl ?? allFeedUrl;
+};
+
+const loadJobs = async () => {
+  const { jobs } = await request("/api/admin/jobs");
+  document.querySelector("#queue-status").textContent = "";
+  const signature = JSON.stringify(jobs);
+  if (signature === jobsSignature) {
+    return;
+  }
+  const hadJobs = Boolean(jobsSignature);
+  jobsSignature = signature;
+  const list = document.querySelector("#job-list");
+  list.replaceChildren();
+  const visibleJobs = [
+    ...jobs.filter((job) => job.status !== "completed" || job.result === "failed"),
+    ...jobs.filter((job) => job.status === "completed" && job.result !== "failed").slice(0, 3),
+  ];
+  if (!visibleJobs.length) {
+    list.append(createTextElement("p", "collection-hint", "Nothing in the queue. Add a link to get started."));
+  }
+  for (const job of visibleJobs) {
+    const row = document.createElement("article");
+    row.className = "job-row";
+    row.dataset.state = job.result === "failed" ? "error" : job.status;
+    const labels = {
+      download: "Add episode",
+      delete: "Delete episode",
+      refresh: "Update feeds",
+      "collection-add": "Add to collection",
+      "collection-remove": "Remove from collection",
+    };
+    const description = document.createElement("div");
+    description.append(
+      createTextElement("strong", "job-title", `${labels[job.kind]}${job.videoId ? ` · ${job.videoId}` : ""}`),
+    );
+    description.append(
+      createTextElement(
+        "span",
+        "job-detail",
+        `${job.progress.message}${job.attempts > 1 ? ` · Attempt ${job.attempts}` : ""}`,
+      ),
+    );
+    row.append(description);
+    if (job.result === "failed") {
+      const retry = createTextElement("button", "quiet-button", "Retry");
+      retry.type = "button";
+      retry.addEventListener("click", async () => {
+        retry.disabled = true;
+        try {
+          await enqueueAction(`/api/admin/jobs/${job.id}/retry`, "POST");
+        } catch (error) {
+          setStatus(error.message, "error");
+          retry.disabled = false;
+        }
+      });
+      row.append(retry);
+    } else {
+      row.append(
+        createTextElement(
+          "span",
+          "job-percent",
+          job.status === "queued" ? "Queued" : job.status === "completed" ? "Done" : `${job.progress.percent}%`,
+        ),
+      );
     }
+    list.append(row);
+  }
+  const active = jobs.find((job) => job.status === "processing");
+  if (active) {
+    setProgress(active.progress);
+  } else {
+    elements.progress.hidden = true;
+  }
+  if (hadJobs) {
+    await loadVideos();
+  }
+};
+
+const refresh = async () => {
+  try {
+    await loadCollections();
+    await loadVideos();
+    await loadJobs();
+  } catch (error) {
+    setStatus(error.message, "error");
   }
 };
 
 elements.form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const submitButton = elements.form.querySelector("button[type=submit]");
-  const submitLabel = submitButton.querySelector(".button-label");
-  submitButton.disabled = true;
-  submitLabel.textContent = "Adding…";
-  elements.input.disabled = true;
+  const button = elements.form.querySelector("button[type=submit]");
+  button.disabled = true;
   setStatus();
-  setProgress({ stage: "queued", percent: 0, message: "Waiting to start" });
-
   try {
-    const { job } = await request("/api/admin/videos", {
-      method: "POST",
-      body: JSON.stringify({ url: elements.input.value }),
+    await enqueueAction("/api/admin/videos", "POST", {
+      url: elements.input.value,
+      ...(selectedCollection ? { collectionId: selectedCollection } : {}),
     });
-    const completedJob = await waitForJob(job);
-    if (!["published", "recovered"].includes(completedJob.result)) {
-      throw new Error(
-        completedJob.result === "already-published"
-          ? "This video has already been added."
-          : "Could not download or publish the video.",
-      );
-    }
-
     elements.form.reset();
-    setStatus();
-    await loadVideos();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not add the video.";
-    setProgress(
-      {
-        stage: "failed",
-        percent: Number(elements.progressTrack.getAttribute("aria-valuenow")),
-        message,
-      },
-      "error",
-    );
-    setStatus();
+    setStatus(error.message, "error");
   } finally {
-    submitButton.disabled = false;
-    submitLabel.textContent = "Add";
-    elements.input.disabled = false;
+    button.disabled = false;
     elements.input.focus();
   }
 });
 
-elements.refresh.addEventListener("click", loadVideos);
-void loadVideos();
+document.querySelector("#collection-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector("button");
+  button.disabled = true;
+  try {
+    await request("/api/admin/collections", {
+      method: "POST",
+      body: JSON.stringify({ name: document.querySelector("#collection-name").value }),
+    });
+    form.reset();
+    form.closest("details").open = false;
+    document.querySelector("#collection-status").textContent = "";
+    await refresh();
+  } catch (error) {
+    document.querySelector("#collection-status").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+
+elements.refresh.addEventListener("click", refresh);
+let polling = false;
+setInterval(async () => {
+  if (document.hidden || polling) {
+    return;
+  }
+  polling = true;
+  try {
+    await loadJobs();
+  } catch {
+    document.querySelector("#queue-status").textContent = "Connection lost. Retrying…";
+  } finally {
+    polling = false;
+  }
+}, 2000);
+void refresh();

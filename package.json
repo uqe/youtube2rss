@@ -28,7 +28,9 @@
     "pm2:logs": "pm2 logs youtube2rss",
     "pm2:logs:server": "pm2 logs youtube2rss-server",
     "pm2:status": "pm2 status",
-    "pm2:monit": "pm2 monit"
+    "pm2:monit": "pm2 monit",
+    "worker": "bun --env-file=.env src/worker.ts",
+    "worker:dev": "bun --env-file=.env.dev src/worker.ts"
   },
   "dependencies": {
     "adze": "^2.3.0",

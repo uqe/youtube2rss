@@ -4,10 +4,10 @@ import type { Message } from "grammy/types";
 import { getRequiredBotToken, getTelegramWhitelist, loadBotAppConfig } from "./config.ts";
 import type { BotAppConfig } from "./config.ts";
 import { createDb } from "./db.ts";
-import { download } from "./download.ts";
 import { getYoutubeVideoId } from "./helpers.ts";
 import { logger } from "./logger.ts";
 import { registerShutdownHandlers } from "./shutdown.ts";
+import { installJobBotHandlers } from "./telegram-jobs.ts";
 
 interface BotLogger {
   info(message: string): void;
@@ -77,9 +77,13 @@ export const createMessageHandler = ({
 export const createBot = ({
   botToken = getRequiredBotToken(),
   telegramWhitelist = getTelegramWhitelist(),
-  downloadVideo = download,
+  downloadVideo,
 }: BotDependencies = {}) => {
   const bot = new Bot(botToken);
+  if (!downloadVideo) {
+    installJobBotHandlers(bot, telegramWhitelist);
+    return bot;
+  }
   const handleMessage = createMessageHandler({
     telegramWhitelist,
     downloadVideo,

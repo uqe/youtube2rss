@@ -19,13 +19,16 @@ export interface DatabaseFactory {
 export const createDatabaseFactory = (getFileName: () => string = getDbFileName): DatabaseFactory => ({
   fileName: getFileName,
   open(options?: DatabaseOptions) {
-    return new Database(getFileName(), options);
+    const db = new Database(getFileName(), options);
+    db.run("PRAGMA busy_timeout = 5000");
+    db.run("PRAGMA foreign_keys = ON");
+    return db;
   },
 });
 
-const defaultDatabaseFactory = createDatabaseFactory();
+export const defaultDatabaseFactory = createDatabaseFactory();
 
-export const latestDatabaseVersion = 4;
+export const latestDatabaseVersion = 5;
 
 export type PublicationStatus = "pending" | "published";
 
@@ -36,7 +39,7 @@ export interface StoredVideo extends Video {
 
 export const dbName = () => defaultDatabaseFactory.fileName();
 
-const runWithDb = <T>(handler: (db: Database) => T, dbFactory: DatabaseFactory = defaultDatabaseFactory) => {
+export const runWithDb = <T>(handler: (db: Database) => T, dbFactory: DatabaseFactory = defaultDatabaseFactory) => {
   const db = dbFactory.open({ readwrite: true });
   try {
     return handler(db);
@@ -140,6 +143,35 @@ const migrateDatabase = (db: Database) => {
   if (version < 4) {
     db.transaction(() => migrateToVersionFour(db))();
   }
+  if (version < 5) {
+    db.transaction(() => {
+      db.run(`CREATE TABLE collections (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        created_at TEXT NOT NULL
+      )`);
+      db.run(`CREATE TABLE collection_videos (
+        collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+        video_id TEXT NOT NULL REFERENCES videos(video_id) ON DELETE CASCADE,
+        PRIMARY KEY (collection_id, video_id)
+      )`);
+      db.run(`CREATE TABLE jobs (
+        id TEXT PRIMARY KEY, kind TEXT NOT NULL, video_id TEXT, collection_id TEXT,
+        status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','processing','completed')),
+        progress TEXT NOT NULL, result TEXT, attempts INTEGER NOT NULL DEFAULT 0,
+        available_at INTEGER NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        owner_pid INTEGER, owner_token TEXT, dedupe_key TEXT NOT NULL
+      )`);
+      db.run("CREATE UNIQUE INDEX jobs_active_key ON jobs(dedupe_key) WHERE status != 'completed'");
+      db.run("CREATE INDEX jobs_queue ON jobs(status, available_at, created_at)");
+      db.run(`CREATE TABLE job_messages (
+        job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+        chat_id INTEGER NOT NULL, message_id INTEGER NOT NULL,
+        signature TEXT NOT NULL DEFAULT '', delivered INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY(job_id, chat_id, message_id)
+      )`);
+      db.run("PRAGMA user_version = 5");
+    })();
+  }
 };
 
 export const createDb = async ({
@@ -152,7 +184,7 @@ export const createDb = async ({
 
   const db = dbFactory.open({ create: true });
   try {
-    migrateDatabase(db);
+    db.transaction(() => migrateDatabase(db)).immediate();
   } finally {
     db.close();
   }

@@ -84,9 +84,9 @@ export const createS3Storage = ({
     }
   };
 
-  const uploadRss = async (filePath: string): Promise<void> => {
+  const uploadRss = async (filePath: string, objectKey = "rss.xml"): Promise<void> => {
     try {
-      await s3client.write("rss.xml", Bun.file(filePath));
+      await s3client.write(objectKey, Bun.file(filePath));
     } catch (error) {
       log.error(`Error uploading RSS XML to S3 from ${filePath}: ${error}`);
       throw error;

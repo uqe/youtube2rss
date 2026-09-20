@@ -29,5 +29,5 @@ jobs:
       - name: Prepare
         run: bun run prepare
 
-      - name: Run tests
-        run: bun run tests
+      - name: Run checks
+        run: bun run check

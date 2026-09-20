@@ -650,3 +650,116 @@ input:focus {
     transition-duration: 0.01ms !important;
   }
 }
+
+.collection-panel {
+  margin-bottom: var(--space-6);
+}
+.collection-panel .section-heading {
+  padding-top: 0;
+}
+.collection-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.collection-list [aria-pressed="true"] {
+  color: var(--console-ink);
+  background: var(--paper-inset);
+  border-color: var(--line-emphasis);
+}
+.collection-hint {
+  margin: var(--space-3) 0 0;
+  color: var(--console-meta);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.collection-create,
+.episode-collections {
+  position: relative;
+}
+summary {
+  cursor: pointer;
+}
+summary:focus-visible {
+  outline: 3px solid var(--control-focus);
+  outline-offset: 2px;
+}
+.collection-toggle {
+  width: fit-content;
+  margin-top: var(--space-2);
+  color: var(--console-meta);
+  font-size: 11px;
+}
+.collection-toggle:hover {
+  color: var(--console-ink);
+}
+.collection-popover {
+  position: absolute;
+  z-index: 2;
+  width: 280px;
+  max-width: calc(100vw - 64px);
+  max-height: 320px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  margin-top: var(--space-2);
+  border: 1px solid var(--line-emphasis);
+  border-radius: var(--radius-small);
+  background: var(--paper-raised);
+  font-size: 13px;
+}
+.collection-create .collection-popover {
+  right: 0;
+}
+.collection-popover .primary-button {
+  min-height: 44px;
+}
+.queue-panel {
+  margin: 0 0 var(--space-10);
+  border-top: 1px solid var(--line-standard);
+}
+.queue-panel .section-heading {
+  padding-bottom: var(--space-2);
+}
+.job-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.job-title,
+.job-detail {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.job-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+.job-detail {
+  margin-top: var(--space-1);
+  color: var(--console-meta);
+  font-size: 12px;
+}
+.job-percent {
+  color: var(--console-meta);
+  font: 12px var(--mono);
+}
+.job-row[data-state="completed"] .job-percent {
+  color: var(--on-air);
+}
+.job-row[data-state="error"] .job-detail {
+  color: var(--signal-red-dark);
+}
+@media (max-width: 760px) {
+  .queue-panel .section-heading {
+    flex-wrap: wrap;
+  }
+  .episode-collections .collection-popover {
+    left: -32px;
+  }
+}

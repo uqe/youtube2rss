@@ -6,7 +6,7 @@ export interface Storage {
   uploadAudio(videoId: string, filePath: string): Promise<void>;
   uploadArtwork(videoId: string, filePath: string): Promise<void>;
   uploadChapters(videoId: string, filePath: string): Promise<void>;
-  uploadRss(filePath: string): Promise<void>;
+  uploadRss(filePath: string, objectKey?: string): Promise<void>;
   ensureCoverImage(): Promise<void>;
   getAudioMetadata(videoId: string, filePath: string): Promise<AudioMetadata>;
   getArtworkMetadata(videoId: string, filePath: string): Promise<ArtworkMetadata>;

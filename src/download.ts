@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
+import { dirname, join } from "node:path";
+
 import type { Message } from "grammy/types";
 import youtubedl, { type Payload } from "youtube-dl-exec";
 
@@ -134,7 +137,20 @@ export const createAudioDownloader = (
   };
 };
 
-const downloadAudio = createAudioDownloader();
+export const createIsolatedAudioDownloader =
+  (downloadAudio = createAudioDownloader()) =>
+  async (videoId: string, outputFilePath: string) => {
+    await mkdir(dirname(outputFilePath), { recursive: true });
+    const directory = await mkdtemp(join(dirname(outputFilePath), ".download-"));
+    try {
+      const stagedPath = join(directory, "audio.mp3");
+      await downloadAudio(videoId, stagedPath);
+      await rename(stagedPath, outputFilePath);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  };
+const downloadAudio = createIsolatedAudioDownloader();
 
 export const createVideoFromInfo = (
   info: Payload,
