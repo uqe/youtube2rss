@@ -8,7 +8,7 @@
         "adze": "^2.3.0",
         "grammy": "^1.45.1",
         "podcast": "^2.0.1",
-        "youtube-dl-exec": "^3.1.12",
+        "youtube-dl-exec": "^3.1.13",
       },
       "devDependencies": {
         "@libs/xml": "npm:@jsr/libs__xml@8.0.0",
@@ -263,7 +263,7 @@
 
     "xml": ["xml@1.0.1", "", {}, "sha512-huCv9IH9Tcf95zuYCsQraZtWnJvBtLVE0QHMOs8bWyZAFZNDcYjsPq1nEx8jKA9y+Beo9v+7OBPRisQTjinQMw=="],
 
-    "youtube-dl-exec": ["youtube-dl-exec@3.1.12", "", { "dependencies": { "binary-version-check": "~6.1.0", "dargs": "~7.0.0", "debug-logfmt": "~1.4.0", "is-unix": "~2.0.10", "tinyspawn": "~1.5.0" } }, "sha512-S7YwBZ1Kka7TYA/t0eOnHfI2QQMGFxJXp8UFQYOEwqg8sp+OH8MJ5c1c0RgJfoqewP/PGS5j8EtmcXg5E2HM4Q=="],
+    "youtube-dl-exec": ["youtube-dl-exec@3.1.13", "", { "dependencies": { "binary-version-check": "~6.1.0", "dargs": "~7.0.0", "debug-logfmt": "~1.4.0", "is-unix": "~2.0.10", "tinyspawn": "~1.5.0" } }, "sha512-6WROSsBsncsOycAAdSMcoz23vlBYxMZqwYkgr/w/51yqVPjdLXJclkBI7LxmGQ5g8j3RK2ii5xna7bnxAun5og=="],
 
     "npm-run-path/path-key": ["path-key@4.0.0", "", {}, "sha512-haREypq7xkM7ErfgIyA0z+Bj4AGKlMSdlQE2jvJo6huWD1EdkKYV+G/T4nq0YEF2vgTT8kqMFKo1uHn950r4SQ=="],
   }
